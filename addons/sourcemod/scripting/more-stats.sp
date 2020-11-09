@@ -21,6 +21,7 @@ enum
 	StatType_PerfStreaks
 }
 
+#define PREFIX "\1[\5MS\1] "
 #define MAX_BHOP_TICKS 8
 #define MAX_PERF_STREAK 24
 
@@ -124,6 +125,11 @@ void EndPerfStreak(int client)
 	gI_CurrentPerfStreak[client] = 0;
 }
 
+void PrintCheckConsole(int client)
+{
+	PrintToChat(client, "%sCheck console for results!", PREFIX);
+}
+
 
 
 // ===== [ COMMANDS ] =====
@@ -157,6 +163,8 @@ Action CommandBhopStats(int client, int argc)
 		float percent = count / float(sum) * 100.0;
 		PrintToConsole(client, "Tick %d: %6d | %5.2f%%", tick, count, percent);
 	}
+
+	PrintCheckConsole(client);
 	return Plugin_Handled;
 }
 
@@ -182,6 +190,8 @@ Action CommandPerfStreaks(int client, int argc)
 		float percent = count / float(sum) * 100.0;
 		PrintToConsole(client, "Perfs %2d: %6d | %5.2f%%", streak, count, percent);
 	}
+
+	PrintCheckConsole(client);
 	return Plugin_Handled;
 }
 
