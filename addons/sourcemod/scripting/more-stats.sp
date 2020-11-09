@@ -142,12 +142,20 @@ Action CommandBhopStats(int client, int argc)
 		return Plugin_Handled;
 	}
 
-	PrintToConsole(client, "Bhop Stats:");
+	int sum = 0;
+	for (int i = 0; i < MAX_BHOP_TICKS; i++)
+	{
+		sum += gI_BhopTicks[client][i];
+	}
+
+	PrintToConsole(client, "Bhop Stats (%d bhops)", sum);
+	PrintToConsole(client, "-----------------------");
 	for (int i = 0; i < MAX_BHOP_TICKS; i++)
 	{
 		int tick = i + 1;
 		int count = gI_BhopTicks[client][i];
-		PrintToConsole(client, "Tick %d: %6d", tick, count);
+		float percent = count / float(sum) * 100.0;
+		PrintToConsole(client, "Tick %d: %6d | %5.2f%%", tick, count, percent);
 	}
 	return Plugin_Handled;
 }
@@ -159,12 +167,20 @@ Action CommandPerfStreaks(int client, int argc)
 		return Plugin_Handled;
 	}
 
-	PrintToConsole(client, "Perf Streaks:");
+	int sum = 0;
+	for (int i = 0; i < MAX_PERF_STREAK; i++)
+	{
+		sum += gI_PerfStreaks[client][i];
+	}
+
+	PrintToConsole(client, "Perf Streaks (%d streaks)", sum);
+	PrintToConsole(client, "-------------------------");
 	for (int i = 0; i < MAX_PERF_STREAK; i++)
 	{
 		int streak = i + 1;
 		int count = gI_PerfStreaks[client][i];
-		PrintToConsole(client, "Perfs %2d: %6d", streak, count);
+		float percent = count / float(sum) * 100.0;
+		PrintToConsole(client, "Perfs %2d: %6d | %5.2f%%", streak, count, percent);
 	}
 	return Plugin_Handled;
 }
