@@ -136,6 +136,7 @@ void EndPerfStreak(int client)
 	{
 		int index = streak - 1;
 		gI_PerfStreaks[client][index]++;
+		gI_PerfStreaksSession[client][index]++;
 	}
 	gI_CurrentPerfStreak[client] = 0;
 }
@@ -160,7 +161,7 @@ void PrintBhopStats(int client, const int[] bhopTicks, int length)
 	{
 		int tick = i + 1;
 		int count = bhopTicks[i];
-		float percent = count / float(sum) * 100.0;
+		float percent = (sum == 0) ? 0.0 : count / float(sum) * 100.0;
 		PrintToConsole(client, "Tick %d: %6d | %5.2f%%", tick, count, percent);
 	}
 }
@@ -179,7 +180,7 @@ void PrintPerfStreaks(int client, const int[] perfStreaks, int length)
 	{
 		int streak = i + 1;
 		int count = perfStreaks[i];
-		float percent = count / float(sum) * 100.0;
+		float percent = (sum == 0) ? 0.0 : count / float(sum) * 100.0;
 		PrintToConsole(client, "Perfs %2d: %6d | %5.2f%%", streak, count, percent);
 	}
 }
