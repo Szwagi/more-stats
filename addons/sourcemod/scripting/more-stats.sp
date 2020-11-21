@@ -30,7 +30,9 @@ bool gB_Loaded[MAXPLAYERS + 1];
 int gI_TickCount[MAXPLAYERS + 1];
 int gI_CurrentPerfStreak[MAXPLAYERS + 1];
 int gI_BhopTicks[MAXPLAYERS + 1][MAX_BHOP_TICKS];
+int gI_BhopTicksSession[MAXPLAYERS + 1][MAX_BHOP_TICKS];
 int gI_PerfStreaks[MAXPLAYERS + 1][MAX_PERF_STREAK];
+int gI_PerfStreaksSession[MAXPLAYERS + 1][MAX_PERF_STREAK];
 
 
 
@@ -51,6 +53,10 @@ public void OnClientConnected(int client)
 	gB_Loaded[client] = false;
 	gI_TickCount[client] = 0;
 	gI_CurrentPerfStreak[client] = 0;
+	FillArray(gI_BhopTicks[client], sizeof(gI_BhopTicks[]), 0);
+	FillArray(gI_BhopTicksSession[client], sizeof(gI_BhopTicksSession[]), 0);
+	FillArray(gI_PerfStreaks[client], sizeof(gI_PerfStreaks[]), 0);
+	FillArray(gI_PerfStreaksSession[client], sizeof(gI_PerfStreaksSession[]), 0);
 }
 
 public void OnClientAuthorized(int client, const char[] auth)
@@ -93,6 +99,7 @@ public void Movement_OnPlayerJump(int client, bool jumpbug)
 	if (groundTicks >= 0 && groundTicks < MAX_BHOP_TICKS)
 	{
 		gI_BhopTicks[client][groundTicks]++;
+		gI_BhopTicksSession[client][groundTicks]++;
 	}
 
 	// Perf streaks
@@ -114,6 +121,14 @@ public void Movement_OnPlayerJump(int client, bool jumpbug)
 
 // ===== [ HELPERS ] =====
 
+void FillArray(any[] array, int length, any value)
+{
+	for (int i = 0; i < length; i++)
+	{
+		array[i] = value;
+	}
+}
+
 void EndPerfStreak(int client)
 {
 	int streak = gI_CurrentPerfStreak[client];
@@ -130,6 +145,45 @@ void PrintCheckConsole(int client)
 	PrintToChat(client, "%sCheck console for results!", PREFIX);
 }
 
+void PrintBhopStats(int client, const int[] bhopTicks, int length)
+{
+	int sum = 0;
+	for (int i = 0; i < length; i++)
+	{
+		sum += bhopTicks[i];
+	}
+
+	PrintToConsole(client, "Bhop Stats (%d bhops)", sum);
+	PrintToConsole(client, "-----------------------");
+
+	for (int i = 0; i < length; i++)
+	{
+		int tick = i + 1;
+		int count = bhopTicks[i];
+		float percent = count / float(sum) * 100.0;
+		PrintToConsole(client, "Tick %d: %6d | %5.2f%%", tick, count, percent);
+	}
+}
+
+void PrintPerfStreaks(int client, const int[] perfStreaks, int length)
+{
+	int sum = 0;
+	for (int i = 0; i < MAX_PERF_STREAK; i++)
+	{
+		sum += perfStreaks[i];
+	}
+
+	PrintToConsole(client, "Perf Streaks (%d streaks)", sum);
+	PrintToConsole(client, "-------------------------");
+	for (int i = 0; i < length; i++)
+	{
+		int streak = i + 1;
+		int count = perfStreaks[i];
+		float percent = count / float(sum) * 100.0;
+		PrintToConsole(client, "Perfs %2d: %6d | %5.2f%%", streak, count, percent);
+	}
+}
+
 
 
 // ===== [ COMMANDS ] =====
@@ -138,7 +192,10 @@ void RegisterCommands()
 {
 	RegConsoleCmd("sm_bhopstats", CommandBhopStats);
 	RegConsoleCmd("sm_perfstats", CommandBhopStats);
+	RegConsoleCmd("sm_sessionbhopstats", CommandSessionBhopStats);
+	RegConsoleCmd("sm_sessionperfstats", CommandSessionBhopStats);
 	RegConsoleCmd("sm_perfstreaks", CommandPerfStreaks);
+	RegConsoleCmd("sm_sessionperfstreaks", CommandSessionPerfStreaks);
 }
 
 Action CommandBhopStats(int client, int argc)
@@ -148,22 +205,14 @@ Action CommandBhopStats(int client, int argc)
 		return Plugin_Handled;
 	}
 
-	int sum = 0;
-	for (int i = 0; i < MAX_BHOP_TICKS; i++)
-	{
-		sum += gI_BhopTicks[client][i];
-	}
+	PrintBhopStats(client, gI_BhopTicks[client], sizeof(gI_BhopTicks[]));
+	PrintCheckConsole(client);
+	return Plugin_Handled;
+}
 
-	PrintToConsole(client, "Bhop Stats (%d bhops)", sum);
-	PrintToConsole(client, "-----------------------");
-	for (int i = 0; i < MAX_BHOP_TICKS; i++)
-	{
-		int tick = i + 1;
-		int count = gI_BhopTicks[client][i];
-		float percent = count / float(sum) * 100.0;
-		PrintToConsole(client, "Tick %d: %6d | %5.2f%%", tick, count, percent);
-	}
-
+Action CommandSessionBhopStats(int client, int argc)
+{
+	PrintBhopStats(client, gI_BhopTicksSession[client], sizeof(gI_BhopTicksSession[]));
 	PrintCheckConsole(client);
 	return Plugin_Handled;
 }
@@ -175,22 +224,14 @@ Action CommandPerfStreaks(int client, int argc)
 		return Plugin_Handled;
 	}
 
-	int sum = 0;
-	for (int i = 0; i < MAX_PERF_STREAK; i++)
-	{
-		sum += gI_PerfStreaks[client][i];
-	}
+	PrintPerfStreaks(client, gI_PerfStreaks[client], sizeof(gI_PerfStreaks[]));
+	PrintCheckConsole(client);
+	return Plugin_Handled;
+}
 
-	PrintToConsole(client, "Perf Streaks (%d streaks)", sum);
-	PrintToConsole(client, "-------------------------");
-	for (int i = 0; i < MAX_PERF_STREAK; i++)
-	{
-		int streak = i + 1;
-		int count = gI_PerfStreaks[client][i];
-		float percent = count / float(sum) * 100.0;
-		PrintToConsole(client, "Perfs %2d: %6d | %5.2f%%", streak, count, percent);
-	}
-
+Action CommandSessionPerfStreaks(int client, int argc)
+{
+	PrintPerfStreaks(client, gI_PerfStreaksSession[client], sizeof(gI_PerfStreaksSession[]));
 	PrintCheckConsole(client);
 	return Plugin_Handled;
 }
