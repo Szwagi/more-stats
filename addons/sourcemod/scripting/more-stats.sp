@@ -45,6 +45,7 @@ int gI_PerfStreaks[MAXPLAYERS + 1][MAX_PERF_STREAK];
 int gI_PerfStreaksSession[MAXPLAYERS + 1][MAX_PERF_STREAK];
 bool gB_ChatScrollStats[MAXPLAYERS + 1];
 bool gB_Scrolling[MAXPLAYERS + 1];
+int gI_ScrollGroundTicks[MAXPLAYERS + 1];
 int gI_ScrollStartCmdNum[MAXPLAYERS + 1];
 int gI_RegisteredScrolls[MAXPLAYERS + 1];
 int gI_FastScrolls[MAXPLAYERS + 1];
@@ -82,6 +83,7 @@ public void OnClientConnected(int client)
 	FillArray(gI_PerfStreaksSession[client], sizeof(gI_PerfStreaksSession[]), 0);
 	gB_ChatScrollStats[client] = false;
 	gB_Scrolling[client] = false;
+	gI_ScrollGroundTicks[client] = -1;
 	gI_ScrollStartCmdNum[client] = 0;
 	gI_RegisteredScrolls[client] = 0;
 	gI_FastScrolls[client] = 0;
@@ -158,6 +160,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 		{
 			// Started scrolling
 			gB_Scrolling[client] = true;
+			gI_ScrollGroundTicks[client] = -1;
 			gI_ScrollStartCmdNum[client] = tickcount;
 			gI_RegisteredScrolls[client] = 1;
 			gI_FastScrolls[client] = 0;
@@ -172,18 +175,19 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 			// Stopped scrolling
 			gB_Scrolling[client] = false;
 
+			bool scrollCausedBhop = (gI_ScrollGroundTicks[client] >= 0);
 			int registeredScrolls = gI_RegisteredScrolls[client];
-			int fastScrolls = gI_FastScrolls[client];
-			int slowScrolls = gI_SlowScrolls[client] - MAX_SCROLL_TICKS;
-
-			float effectivenessPercent = GetScrollEffectivenessPercent(registeredScrolls, fastScrolls, slowScrolls);
-
-			if (registeredScrolls > 2)
+			if (registeredScrolls > 2 && scrollCausedBhop)
 			{
+				int fastScrolls = gI_FastScrolls[client];
+				int slowScrolls = gI_SlowScrolls[client] - MAX_SCROLL_TICKS;
+
 				if (gB_ChatScrollStats[client])
 				{
-					PrintToChat(client, "%s\6%d \8Scrolls (\6%0.0f%%\8) | \6%d \8Slow | \6%d \8Fast", 
-						PREFIX, registeredScrolls, effectivenessPercent, slowScrolls, fastScrolls);
+					float effectivenessPercent = GetScrollEffectivenessPercent(registeredScrolls, fastScrolls, slowScrolls);
+					int groundTicks = gI_ScrollGroundTicks[client];
+					PrintToChat(client, "%s\6%d \8Scrolls (\6%0.0f%%\8) | \6%d \8/ \6%d \8Speed | \6%d \8Ground", 
+						PREFIX, registeredScrolls, effectivenessPercent, slowScrolls, fastScrolls, groundTicks);
 				}
 
 				gI_SumRegisteredScrolls[client] += registeredScrolls;
@@ -210,6 +214,12 @@ public void Movement_OnPlayerJump(int client, bool jumpbug)
 
 	int landingTick = Movement_GetLandingTick(client);
 	int groundTicks = gI_TickCount[client] - landingTick - 1;
+
+	// Scroll stats
+	if (groundTicks >= 0 && groundTicks < MAX_BHOP_TICKS)
+	{
+		gI_ScrollGroundTicks[client] = groundTicks;
+	}
 
 	// Bhop stats
 	if (groundTicks >= 0 && groundTicks < MAX_BHOP_TICKS)
