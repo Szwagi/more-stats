@@ -1,19 +1,15 @@
 # More Stats
 
 Plugin to display statistics about various KZ actions.
-Currently basically a clone of [GameChaos' perfstats plugin](https://bitbucket.org/GameChaos/perf-stats), but with database support, so can be used on bigger servers.
-
-### Features
-- Display bhop ground ticks
-- Display perf streaks
 
 ### Commands
 - `!bhopstats` / `!perfstats` - Display bhop ground ticks
+- `!sessionbhopstats` / `!sessionperfstats` - Display bhop ground ticks since connected
 - `!perfstreaks` - Display perf streaks
-
-### How-To
-- Install dependencies
-- Add `more-stats` to database config
+- `!sessionperfstreaks` - Display perf streaks since connected
+- `!scrollstats` - Display scroll statistics
+- `!sessionscrollstats` - Display scroll statistics since connected
+- `!chatscrollstats` - Display scroll statistics in chat as they happen 
 
 ### Dependencies
 - [MovementAPI](https://github.com/danzayau/MovementAPI)
