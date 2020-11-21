@@ -21,18 +21,27 @@ enum
 	StatType_PerfStreaks
 }
 
-#define PREFIX "\1[\5MS\1] "
+#define PREFIX " \4KZ \8| "
 #define MAX_BHOP_TICKS 8
 #define MAX_PERF_STREAK 24
+#define MAX_SCROLL_TICKS 16
 
 Database gH_DB;
 bool gB_Loaded[MAXPLAYERS + 1];
 int gI_TickCount[MAXPLAYERS + 1];
+int gI_LastPlusJumpCmdNum[MAXPLAYERS + 1];
 int gI_CurrentPerfStreak[MAXPLAYERS + 1];
 int gI_BhopTicks[MAXPLAYERS + 1][MAX_BHOP_TICKS];
 int gI_BhopTicksSession[MAXPLAYERS + 1][MAX_BHOP_TICKS];
 int gI_PerfStreaks[MAXPLAYERS + 1][MAX_PERF_STREAK];
 int gI_PerfStreaksSession[MAXPLAYERS + 1][MAX_PERF_STREAK];
+bool gB_ChatScrollStats[MAXPLAYERS + 1];
+bool gB_Scrolling[MAXPLAYERS + 1];
+int gI_ScrollStartCmdNum[MAXPLAYERS + 1];
+int gI_RegisteredScrolls[MAXPLAYERS + 1];
+int gI_FastScrolls[MAXPLAYERS + 1];
+int gI_SlowScrolls[MAXPLAYERS + 1];
+int gI_LastButtons[MAXPLAYERS + 1];
 
 
 
@@ -52,11 +61,19 @@ public void OnClientConnected(int client)
 {
 	gB_Loaded[client] = false;
 	gI_TickCount[client] = 0;
+	gI_LastPlusJumpCmdNum[client] = 0;
 	gI_CurrentPerfStreak[client] = 0;
 	FillArray(gI_BhopTicks[client], sizeof(gI_BhopTicks[]), 0);
 	FillArray(gI_BhopTicksSession[client], sizeof(gI_BhopTicksSession[]), 0);
 	FillArray(gI_PerfStreaks[client], sizeof(gI_PerfStreaks[]), 0);
 	FillArray(gI_PerfStreaksSession[client], sizeof(gI_PerfStreaksSession[]), 0);
+	gB_ChatScrollStats[client] = false;
+	gB_Scrolling[client] = false;
+	gI_ScrollStartCmdNum[client] = 0;
+	gI_RegisteredScrolls[client] = 0;
+	gI_FastScrolls[client] = 0;
+	gI_SlowScrolls[client] = 0;
+	gI_LastButtons[client] = 0;
 }
 
 public void OnClientAuthorized(int client, const char[] auth)
@@ -82,7 +99,76 @@ public void OnClientDisconnect(int client)
 
 public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3], float angles[3], int &weapon, int &subtype, int &cmdnum, int &tickcount, int &seed, int mouse[2])
 {
+	if (IsFakeClient(client))
+	{
+		return Plugin_Continue;
+	}
+
 	gI_TickCount[client] = tickcount;
+
+	// Scroll stats, we eating spaghettios tonight
+	int lastButtons = gI_LastButtons[client];
+
+	bool inJump = (buttons & IN_JUMP) != 0;
+	bool lastInJump = (lastButtons & IN_JUMP) != 0;
+
+	if (gB_Scrolling[client])
+	{
+		if (inJump && !lastInJump)
+		{
+			gI_RegisteredScrolls[client]++;
+		}
+		else if (inJump && lastInJump)
+		{
+			gI_FastScrolls[client]++;
+		}
+		else if (!inJump && !lastInJump)
+		{
+			gI_SlowScrolls[client]++;
+		}
+	}
+
+	if (inJump)
+	{
+		if (tickcount > gI_LastPlusJumpCmdNum[client] + MAX_SCROLL_TICKS)
+		{
+			// Started scrolling
+			gB_Scrolling[client] = true;
+			gI_ScrollStartCmdNum[client] = tickcount;
+			gI_RegisteredScrolls[client] = 1;
+			gI_FastScrolls[client] = 0;
+			gI_SlowScrolls[client] = 0;
+		}
+		gI_LastPlusJumpCmdNum[client] = tickcount;
+	}
+	else if (gB_Scrolling[client])
+	{
+		if (tickcount > gI_LastPlusJumpCmdNum[client] + MAX_SCROLL_TICKS)
+		{
+			// Stopped scrolling
+			gB_Scrolling[client] = false;
+
+			int slowScrolls = gI_SlowScrolls[client] - MAX_SCROLL_TICKS;
+			int fastScrolls = gI_FastScrolls[client];
+		
+			int goodScrolls = gI_RegisteredScrolls[client];
+			int badScrolls = slowScrolls + fastScrolls;			
+			float effectiveness = goodScrolls / (float(goodScrolls) + (float(badScrolls) / 1.5)) * 100.0;
+
+			if (goodScrolls > 2)
+			{
+				if (gB_ChatScrollStats[client])
+				{
+					PrintToChat(client, "%s\6%d \8Scrolls (\6%0.0f%%\8) | \6%d \8Slow | \6%d \8Fast", 
+						PREFIX, goodScrolls, effectiveness, slowScrolls, fastScrolls);
+				}
+			}
+		}
+	}
+
+	gI_LastButtons[client] = buttons;
+
+	return Plugin_Continue;
 }
 
 public void Movement_OnPlayerJump(int client, bool jumpbug)
@@ -197,6 +283,7 @@ void RegisterCommands()
 	RegConsoleCmd("sm_sessionperfstats", CommandSessionBhopStats);
 	RegConsoleCmd("sm_perfstreaks", CommandPerfStreaks);
 	RegConsoleCmd("sm_sessionperfstreaks", CommandSessionPerfStreaks);
+	RegConsoleCmd("sm_chatscrollstats", CommandChatScrollStats);
 }
 
 Action CommandBhopStats(int client, int argc)
@@ -241,9 +328,23 @@ Action CommandSessionPerfStreaks(int client, int argc)
 	{
 		return Plugin_Handled;
 	}
-	
+
 	PrintPerfStreaks(client, gI_PerfStreaksSession[client], sizeof(gI_PerfStreaksSession[]));
 	PrintCheckConsole(client);
+	return Plugin_Handled;
+}
+
+Action CommandChatScrollStats(int client, int argc)
+{
+	gB_ChatScrollStats[client] = !gB_ChatScrollStats[client];
+	if (gB_ChatScrollStats[client])
+	{
+		PrintToChat(client, "%s\8Chat scroll stats enabled.", PREFIX);
+	}
+	else
+	{
+		PrintToChat(client, "%s\8Chat scroll stats disabled.", PREFIX);
+	}
 	return Plugin_Handled;
 }
 
