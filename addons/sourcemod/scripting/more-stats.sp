@@ -26,7 +26,9 @@ enum
 {
 	ScrollEff_RegisteredScrolls,
 	ScrollEff_FastScrolls,
-	ScrollEff_SlowScrolls
+	ScrollEff_SlowScrolls,
+	ScrollEff_TimingTotal,
+	ScrollEff_TimingSamples
 };
 
 #define PREFIX " \4KZ \8| "
@@ -56,9 +58,13 @@ int gI_LastButtons[MAXPLAYERS + 1];
 int gI_SumRegisteredScrolls[MAXPLAYERS + 1];
 int gI_SumFastScrolls[MAXPLAYERS + 1];
 int gI_SumSlowScrolls[MAXPLAYERS + 1];
+int gI_TimingTotal[MAXPLAYERS + 1];
+int gI_TimingSamples[MAXPLAYERS + 1];
 int gI_SumRegisteredScrollsSession[MAXPLAYERS + 1];
 int gI_SumFastScrollsSession[MAXPLAYERS + 1];
 int gI_SumSlowScrollsSession[MAXPLAYERS + 1];
+int gI_TimingTotalSession[MAXPLAYERS + 1];
+int gI_TimingSamplesSession[MAXPLAYERS + 1];
 
 
 // ===== [ PLUGIN EVENTS ] =====
@@ -96,9 +102,13 @@ public void OnClientConnected(int client)
 	gI_SumRegisteredScrolls[client] = 0;
 	gI_SumFastScrolls[client] = 0;
 	gI_SumSlowScrolls[client] = 0;
+	gI_TimingTotal[client] = 0;
+	gI_TimingSamples[client] = 0;
 	gI_SumRegisteredScrollsSession[client] = 0;
 	gI_SumFastScrollsSession[client] = 0;
 	gI_SumSlowScrollsSession[client] = 0;
+	gI_TimingTotalSession[client] = 0;
+	gI_TimingSamplesSession[client] = 0;
 }
 
 public void OnClientAuthorized(int client, const char[] auth)
@@ -187,10 +197,11 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 				int fastScrolls = gI_FastScrolls[client];
 				int slowScrolls = gI_SlowScrolls[client] - MAX_SCROLL_TICKS;
 
+				int timingOffset = GetScrollTimingOffset(gI_ScrollStartCmdNum[client], gI_LastPlusJumpCmdNum[client], gI_ScrollBhopCmdNum[client]);
+
 				if (gB_ChatScrollStats[client])
 				{
 					float effectivenessPercent = GetScrollEffectivenessPercent(registeredScrolls, fastScrolls, slowScrolls);
-					int timingOffset = GetScrollTimingOffset(gI_ScrollStartCmdNum[client], gI_LastPlusJumpCmdNum[client], gI_ScrollBhopCmdNum[client]);
 					int groundTicks = gI_ScrollGroundTicks[client];
 					PrintToChat(client, "%s\6%d \8Scrolls (\6%0.0f%%\8) | \6%d \8/ \6%d \8Speed | \6%s%d \8Time | \6%d \8Ground", 
 						PREFIX, 
@@ -206,6 +217,11 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 				gI_SumRegisteredScrollsSession[client] += registeredScrolls;
 				gI_SumFastScrollsSession[client] += fastScrolls;
 				gI_SumSlowScrollsSession[client] += slowScrolls;
+
+				gI_TimingTotal[client] += timingOffset;
+				gI_TimingSamples[client]++;
+				gI_TimingTotalSession[client] += timingOffset;
+				gI_TimingSamplesSession[client]++;
 			}
 		}
 	}
@@ -345,13 +361,15 @@ void PrintPerfStreaks(int client, const int[] perfStreaks, int length)
 	}
 }
 
-void PrintScrollStats(int client, int registeredScrolls, int fastScrolls, int slowScrolls)
+void PrintScrollStats(int client, int registeredScrolls, int fastScrolls, int slowScrolls, int timingTotal, int timingSamples)
 {
 	PrintToConsole(client, "Scroll Stats (%d scrolls)", registeredScrolls);
 	PrintToConsole(client, "-------------------------");
 	PrintToConsole(client, "Effectiveness: %0.2f%%", GetScrollEffectivenessPercent(registeredScrolls, fastScrolls, slowScrolls));
-	PrintToConsole(client, "Fast: %d", fastScrolls);
-	PrintToConsole(client, "Slow: %d", slowScrolls);
+	PrintToConsole(client, "Speed: %d / %d", slowScrolls, fastScrolls);
+	
+	float timingOffset = (timingSamples == 0) ? 0.0 : timingTotal / float(timingSamples);
+	PrintToConsole(client, "Time: %s%0.2f", timingOffset >= 0.0 ? "+" : "", timingOffset);
 }
 
 
@@ -426,7 +444,8 @@ Action CommandScrollStats(int client, int argc)
 		return Plugin_Handled;
 	}
 
-	PrintScrollStats(client, gI_SumRegisteredScrolls[client], gI_SumFastScrolls[client], gI_SumSlowScrolls[client]);
+	PrintScrollStats(client, gI_SumRegisteredScrolls[client], gI_SumFastScrolls[client], 
+		gI_SumSlowScrolls[client], gI_TimingTotal[client], gI_TimingSamples[client]);
 	PrintCheckConsole(client);
 	return Plugin_Handled;
 }
@@ -438,7 +457,8 @@ Action CommandSessionScrollStats(int client, int argc)
 		return Plugin_Handled;
 	}
 
-	PrintScrollStats(client, gI_SumRegisteredScrollsSession[client], gI_SumFastScrollsSession[client], gI_SumSlowScrollsSession[client]);
+	PrintScrollStats(client, gI_SumRegisteredScrollsSession[client], gI_SumFastScrollsSession[client], 
+		gI_SumSlowScrollsSession[client], gI_TimingTotalSession[client], gI_TimingSamplesSession[client]);
 	PrintCheckConsole(client);
 	return Plugin_Handled;
 }
@@ -448,7 +468,16 @@ Action CommandChatScrollStats(int client, int argc)
 	gB_ChatScrollStats[client] = !gB_ChatScrollStats[client];
 	if (gB_ChatScrollStats[client])
 	{
-		PrintToChat(client, "%s\8Chat scroll stats enabled.", PREFIX);
+		PrintToChat(client, "%s\8Chat scroll stats enabled. Check console for more information.", PREFIX);
+
+		PrintToConsole(client, "*0 Scrolls (*1) | *2 / *3 Speed | *4 Time | *5 Ground");
+		PrintToConsole(client, "=====================================================");
+		PrintToConsole(client, "*0 = How many fresh +jump commands were registered during the scroll");
+		PrintToConsole(client, "*1 = The effectiveness of the scroll speed (3 jump commands like so +-+-+- is 100%%)");
+		PrintToConsole(client, "*2 = Ticks wasted on slow scrolling (-jump twice or more in a row)");
+		PrintToConsole(client, "*3 = Ticks wasted on fast scrolling (+jump twice or more in a row)");
+		PrintToConsole(client, "*4 = The timing in ticks of the bhop related to scroll 'middle' (negative means early, positive means late)");
+		PrintToConsole(client, "*5 = Amount of ticks spent on the ground");
 	}
 	else
 	{
@@ -537,8 +566,12 @@ void SaveClientStats(int client)
 	StrCat(query, sizeof(query), buffer);
 	FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d),", steamid, StatType_ScrollEff, ScrollEff_FastScrolls, gI_SumFastScrolls[client]);
 	StrCat(query, sizeof(query), buffer);
+	FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d),", steamid, StatType_ScrollEff, ScrollEff_SlowScrolls, gI_SumSlowScrolls[client]);
+	StrCat(query, sizeof(query), buffer);
+	FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d),", steamid, StatType_ScrollEff, ScrollEff_TimingTotal, gI_TimingTotal[client]);
+	StrCat(query, sizeof(query), buffer);
 	// This format has no comma!!!
-	FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d)", steamid, StatType_ScrollEff, ScrollEff_SlowScrolls, gI_SumSlowScrolls[client]);
+	FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d)", steamid, StatType_ScrollEff, ScrollEff_TimingSamples, gI_TimingSamples[client]);
 	StrCat(query, sizeof(query), buffer);
 
 	//query[strlen(query) - 1] = 0; // Remove last comma...
@@ -595,6 +628,14 @@ void SQLTxnSuccess_LoadClientStats(Database db, int userid, int numQueries, DBRe
 				else if (type2 == ScrollEff_SlowScrolls)
 				{
 					gI_SumSlowScrolls[client] = count;
+				}
+				else if (type2 == ScrollEff_TimingTotal)
+				{
+					gI_TimingTotal[client] = count;
+				}
+				else if (type2 == ScrollEff_TimingSamples)
+				{
+					gI_TimingSamples[client] = count;
 				}
 			}
 		}
