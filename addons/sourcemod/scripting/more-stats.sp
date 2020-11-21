@@ -213,6 +213,11 @@ Action CommandBhopStats(int client, int argc)
 
 Action CommandSessionBhopStats(int client, int argc)
 {
+	if (!gB_Loaded[client])
+	{
+		return Plugin_Handled;
+	}
+
 	PrintBhopStats(client, gI_BhopTicksSession[client], sizeof(gI_BhopTicksSession[]));
 	PrintCheckConsole(client);
 	return Plugin_Handled;
@@ -232,6 +237,11 @@ Action CommandPerfStreaks(int client, int argc)
 
 Action CommandSessionPerfStreaks(int client, int argc)
 {
+	if (!gB_Loaded[client])
+	{
+		return Plugin_Handled;
+	}
+	
 	PrintPerfStreaks(client, gI_PerfStreaksSession[client], sizeof(gI_PerfStreaksSession[]));
 	PrintCheckConsole(client);
 	return Plugin_Handled;
