@@ -37,6 +37,7 @@ enum
 Database gH_DB;
 bool gB_Loaded[MAXPLAYERS + 1];
 int gI_TickCount[MAXPLAYERS + 1];
+int gI_CmdNum[MAXPLAYERS + 1];
 int gI_LastPlusJumpCmdNum[MAXPLAYERS + 1];
 int gI_CurrentPerfStreak[MAXPLAYERS + 1];
 int gI_BhopTicks[MAXPLAYERS + 1][MAX_BHOP_TICKS];
@@ -46,6 +47,7 @@ int gI_PerfStreaksSession[MAXPLAYERS + 1][MAX_PERF_STREAK];
 bool gB_ChatScrollStats[MAXPLAYERS + 1];
 bool gB_Scrolling[MAXPLAYERS + 1];
 int gI_ScrollGroundTicks[MAXPLAYERS + 1];
+int gI_ScrollBhopCmdNum[MAXPLAYERS + 1];
 int gI_ScrollStartCmdNum[MAXPLAYERS + 1];
 int gI_RegisteredScrolls[MAXPLAYERS + 1];
 int gI_FastScrolls[MAXPLAYERS + 1];
@@ -75,6 +77,7 @@ public void OnClientConnected(int client)
 {
 	gB_Loaded[client] = false;
 	gI_TickCount[client] = 0;
+	gI_CmdNum[client] = 0;
 	gI_LastPlusJumpCmdNum[client] = 0;
 	gI_CurrentPerfStreak[client] = 0;
 	FillArray(gI_BhopTicks[client], sizeof(gI_BhopTicks[]), 0);
@@ -84,6 +87,7 @@ public void OnClientConnected(int client)
 	gB_ChatScrollStats[client] = false;
 	gB_Scrolling[client] = false;
 	gI_ScrollGroundTicks[client] = -1;
+	gI_ScrollBhopCmdNum[client] = 0;
 	gI_ScrollStartCmdNum[client] = 0;
 	gI_RegisteredScrolls[client] = 0;
 	gI_FastScrolls[client] = 0;
@@ -126,6 +130,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 	}
 
 	gI_TickCount[client] = tickcount;
+	gI_CmdNum[client] = cmdnum;
 
 	if (!gB_Loaded[client])
 	{
@@ -156,21 +161,21 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 
 	if (inJump)
 	{
-		if (tickcount > gI_LastPlusJumpCmdNum[client] + MAX_SCROLL_TICKS)
+		if (cmdnum > gI_LastPlusJumpCmdNum[client] + MAX_SCROLL_TICKS)
 		{
 			// Started scrolling
 			gB_Scrolling[client] = true;
 			gI_ScrollGroundTicks[client] = -1;
-			gI_ScrollStartCmdNum[client] = tickcount;
+			gI_ScrollStartCmdNum[client] = cmdnum;
 			gI_RegisteredScrolls[client] = 1;
 			gI_FastScrolls[client] = 0;
 			gI_SlowScrolls[client] = 0;
 		}
-		gI_LastPlusJumpCmdNum[client] = tickcount;
+		gI_LastPlusJumpCmdNum[client] = cmdnum;
 	}
 	else if (gB_Scrolling[client])
 	{
-		if (tickcount > gI_LastPlusJumpCmdNum[client] + MAX_SCROLL_TICKS)
+		if (cmdnum > gI_LastPlusJumpCmdNum[client] + MAX_SCROLL_TICKS)
 		{
 			// Stopped scrolling
 			gB_Scrolling[client] = false;
@@ -185,9 +190,14 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 				if (gB_ChatScrollStats[client])
 				{
 					float effectivenessPercent = GetScrollEffectivenessPercent(registeredScrolls, fastScrolls, slowScrolls);
+					int timingOffset = GetScrollTimingOffset(gI_ScrollStartCmdNum[client], gI_LastPlusJumpCmdNum[client], gI_ScrollBhopCmdNum[client]);
 					int groundTicks = gI_ScrollGroundTicks[client];
-					PrintToChat(client, "%s\6%d \8Scrolls (\6%0.0f%%\8) | \6%d \8/ \6%d \8Speed | \6%d \8Ground", 
-						PREFIX, registeredScrolls, effectivenessPercent, slowScrolls, fastScrolls, groundTicks);
+					PrintToChat(client, "%s\6%d \8Scrolls (\6%0.0f%%\8) | \6%d \8/ \6%d \8Speed | \6%s%d \8Time | \6%d \8Ground", 
+						PREFIX, 
+						registeredScrolls, effectivenessPercent, 
+						slowScrolls, fastScrolls, 
+						timingOffset >= 0 ? "+" : "", timingOffset, 
+						groundTicks);
 				}
 
 				gI_SumRegisteredScrolls[client] += registeredScrolls;
@@ -219,6 +229,7 @@ public void Movement_OnPlayerJump(int client, bool jumpbug)
 	if (groundTicks >= 0 && groundTicks < MAX_BHOP_TICKS)
 	{
 		gI_ScrollGroundTicks[client] = groundTicks;
+		gI_ScrollBhopCmdNum[client] = gI_CmdNum[client];
 	}
 
 	// Bhop stats
@@ -265,6 +276,17 @@ float GetScrollEffectivenessPercent(int registeredScrolls, int fastScrolls, int 
 
 	float effectiveness = registeredScrolls / (float(registeredScrolls) + (float(badScrolls) / 1.5));
 	return effectiveness * 100.0;
+}
+
+int GetScrollTimingOffset(int begin, int end, int bhop)
+{
+	int middle = RoundFloat((begin + end) / 2.0);
+	int rawOffset = (middle - bhop);
+	if (rawOffset >= -1 && rawOffset <= 1)
+	{
+		return 0;
+	}
+	return (rawOffset > 1) ? rawOffset - 1 : rawOffset + 1;
 }
 
 void EndPerfStreak(int client)
