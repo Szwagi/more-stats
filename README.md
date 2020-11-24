@@ -13,3 +13,7 @@ Plugin to display statistics about various KZ actions.
 
 ### Dependencies
 - [MovementAPI](https://github.com/danzayau/MovementAPI)
+
+### Notes
+- Requires `more-stats` in databases config
+
