@@ -1,5 +1,6 @@
 #include <sourcemod>
 #include <movementapi>
+#include <gokz/core>
 
 #pragma newdecls required
 #pragma semicolon 1
@@ -66,6 +67,14 @@ int gI_SumSlowScrollsSession[MAXPLAYERS + 1];
 int gI_TimingTotalSession[MAXPLAYERS + 1];
 int gI_TimingSamplesSession[MAXPLAYERS + 1];
 
+int gI_BhopTicksRun[MAXPLAYERS + 1][MAX_BHOP_TICKS];
+int gI_PerfStreaksRun[MAXPLAYERS + 1][MAX_PERF_STREAK];
+int gI_SumRegisteredScrollsRun[MAXPLAYERS + 1];
+int gI_SumFastScrollsRun[MAXPLAYERS + 1];
+int gI_SumSlowScrollsRun[MAXPLAYERS + 1];
+int gI_TimingTotalRun[MAXPLAYERS + 1];
+int gI_TimingSamplesRun[MAXPLAYERS + 1];
+bool gB_PostRunStats[MAXPLAYERS + 1];
 
 // ===== [ PLUGIN EVENTS ] =====
 
@@ -109,6 +118,15 @@ public void OnClientConnected(int client)
 	gI_SumSlowScrollsSession[client] = 0;
 	gI_TimingTotalSession[client] = 0;
 	gI_TimingSamplesSession[client] = 0;
+	
+	FillArray(gI_BhopTicksRun[client], sizeof(gI_BhopTicksRun[]), 0);
+	FillArray(gI_PerfStreaksRun[client], sizeof(gI_PerfStreaksRun[]), 0);	
+	gI_SumRegisteredScrollsRun[client] = 0;
+	gI_SumFastScrollsRun[client] = 0;
+	gI_SumSlowScrollsRun[client] = 0;
+	gI_TimingTotalRun[client] = 0;
+	gI_TimingSamplesRun[client] = 0;
+	gB_PostRunStats[client] = false;
 }
 
 public void OnClientAuthorized(int client, const char[] auth)
@@ -222,6 +240,15 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 				gI_TimingSamples[client]++;
 				gI_TimingTotalSession[client] += timingOffset;
 				gI_TimingSamplesSession[client]++;
+
+				if (GOKZ_GetTimerRunning(client))
+				{			
+					gI_SumRegisteredScrollsRun[client] += registeredScrolls;
+					gI_SumFastScrollsRun[client] += fastScrolls;
+					gI_SumSlowScrollsRun[client] += slowScrolls;
+					gI_TimingTotalRun[client] += timingOffset;
+					gI_TimingSamplesRun[client]++;
+				}				
 			}
 		}
 	}
@@ -253,6 +280,10 @@ public void Movement_OnPlayerJump(int client, bool jumpbug)
 	{
 		gI_BhopTicks[client][groundTicks]++;
 		gI_BhopTicksSession[client][groundTicks]++;
+		if (GOKZ_GetTimerRunning(client))
+		{
+			gI_BhopTicksRun[client][groundTicks]++;
+		}
 	}
 
 	// Perf streaks
@@ -270,7 +301,31 @@ public void Movement_OnPlayerJump(int client, bool jumpbug)
 	}
 }
 
-
+public void GOKZ_OnTimerStart_Post(int client, int course)
+{
+	FillArray(gI_BhopTicksRun[client], sizeof(gI_BhopTicksRun[]), 0);
+	FillArray(gI_PerfStreaksRun[client], sizeof(gI_PerfStreaksRun[]), 0);	
+	gI_SumRegisteredScrollsRun[client] = 0;
+	gI_SumFastScrollsRun[client] = 0;
+	gI_SumSlowScrollsRun[client] = 0;
+	gI_TimingTotalRun[client] = 0;
+	gI_TimingSamplesRun[client] = 0;
+}
+public void GOKZ_OnTimerEnd_Post(int client, int course, float time, int teleportsUsed)
+{
+	if (gB_PostRunStats[client])
+	{
+		PrintToConsole(client, "Player: %N, Course: %i, Time: %f, TPs: %i", client, course, time, teleportsUsed);
+		PrintToConsole(client, "-----------------------");
+		PrintBhopStats(client, gI_BhopTicksRun[client], sizeof(gI_BhopTicksRun[]));
+		PrintToConsole(client, "-----------------------");
+		PrintPerfStreaks(client, gI_PerfStreaksRun[client], sizeof(gI_PerfStreaksRun[]));
+		PrintToConsole(client, "-----------------------");
+		PrintScrollStats(client, gI_SumRegisteredScrolls[client], gI_SumFastScrolls[client], 
+			gI_SumSlowScrolls[client], gI_TimingTotal[client], gI_TimingSamples[client]);
+	}
+	
+}
 
 // ===== [ HELPERS ] =====
 
@@ -313,6 +368,10 @@ void EndPerfStreak(int client)
 		int index = streak - 1;
 		gI_PerfStreaks[client][index]++;
 		gI_PerfStreaksSession[client][index]++;
+		if (GOKZ_GetTimerRunning(client))
+		{		
+			gI_PerfStreaksRun[client][index]++;
+		}
 	}
 	gI_CurrentPerfStreak[client] = 0;
 }
@@ -340,6 +399,18 @@ void PrintBhopStats(int client, const int[] bhopTicks, int length)
 		float percent = (sum == 0) ? 0.0 : count / float(sum) * 100.0;
 		PrintToConsole(client, "Tick %d: %6d | %5.2f%%", tick, count, percent);
 	}
+}
+
+void PrintShortBhopStats(int client, const int[] bhopTicks, int length)
+{
+	int sum = 0;
+	for (int i = 0; i < length; i++)
+	{
+		sum += bhopTicks[i];
+	}
+	int count = bhopTicks[0];
+	float percent = (sum == 0) ? 0.0: count / float(sum) * 100.0;
+	PrintToChat(client, "%s\6%N\8: \6%5.2f%% \8Perfs", PREFIX, client, percent);
 }
 
 void PrintPerfStreaks(int client, const int[] perfStreaks, int length)
@@ -387,6 +458,12 @@ void RegisterCommands()
 	RegConsoleCmd("sm_scrollstats", CommandScrollStats);
 	RegConsoleCmd("sm_sessionscrollstats", CommandSessionScrollStats);
 	RegConsoleCmd("sm_chatscrollstats", CommandChatScrollStats);
+	
+	RegConsoleCmd("sm_runbhopstats", CommandRunBhopStats);
+	RegConsoleCmd("sm_runperfstats", CommandRunBhopStats);	
+	RegConsoleCmd("sm_runperfstreaks", CommandRunPerfStreaks);	
+	RegConsoleCmd("sm_runscrollstats", CommandRunScrollStats);
+	RegConsoleCmd("sm_postrunstats", CommandPostRunStats);
 }
 
 Action CommandBhopStats(int client, int argc)
@@ -413,6 +490,20 @@ Action CommandSessionBhopStats(int client, int argc)
 	return Plugin_Handled;
 }
 
+Action CommandRunBhopStats(int client, int argc)
+{
+	if (!gB_Loaded[client])
+	{
+		return Plugin_Handled;
+	}
+
+	PrintBhopStats(client, gI_BhopTicksRun[client], sizeof(gI_BhopTicksRun[]));
+	PrintShortBhopStats(client, gI_BhopTicksRun[client], sizeof(gI_BhopTicksRun[]));
+	PrintCheckConsole(client);
+	
+	return Plugin_Handled;
+}
+
 Action CommandPerfStreaks(int client, int argc)
 {
 	if (!gB_Loaded[client])
@@ -433,6 +524,19 @@ Action CommandSessionPerfStreaks(int client, int argc)
 	}
 
 	PrintPerfStreaks(client, gI_PerfStreaksSession[client], sizeof(gI_PerfStreaksSession[]));
+	PrintCheckConsole(client);
+	return Plugin_Handled;
+}
+
+
+Action CommandRunPerfStreaks(int client, int argc)
+{
+	if (!gB_Loaded[client])
+	{
+		return Plugin_Handled;
+	}
+
+	PrintPerfStreaks(client, gI_PerfStreaksRun[client], sizeof(gI_PerfStreaksRun[]));
 	PrintCheckConsole(client);
 	return Plugin_Handled;
 }
@@ -463,6 +567,21 @@ Action CommandSessionScrollStats(int client, int argc)
 	return Plugin_Handled;
 }
 
+
+Action CommandRunScrollStats(int client, int argc)
+{
+	if (!gB_Loaded[client])
+	{
+		return Plugin_Handled;
+	}
+
+	PrintScrollStats(client, gI_SumRegisteredScrollsRun[client], gI_SumFastScrollsRun[client], 
+		gI_SumSlowScrollsRun[client], gI_TimingTotalRun[client], gI_TimingSamplesRun[client]);
+	PrintCheckConsole(client);
+	return Plugin_Handled;
+}
+ 
+
 Action CommandChatScrollStats(int client, int argc)
 {
 	gB_ChatScrollStats[client] = !gB_ChatScrollStats[client];
@@ -486,6 +605,19 @@ Action CommandChatScrollStats(int client, int argc)
 	return Plugin_Handled;
 }
 
+Action CommandPostRunStats(int client, int argc)
+{
+	gB_PostRunStats[client] = !gB_PostRunStats[client];
+	if (gB_PostRunStats[client])
+	{
+		PrintToChat(client, "%s\8Post-run stats enabled. Check console at the end of the run for bhop stats.", PREFIX);
+	}
+	else
+	{
+		PrintToChat(client, "%s\8Post-run stats disabled.", PREFIX);
+	}
+	return Plugin_Handled;
+}
 
 
 // ===== [ DATABASE ] =====
