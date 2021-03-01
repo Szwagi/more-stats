@@ -1,6 +1,7 @@
 #include <sourcemod>
 #include <movementapi>
 #include <gokz/core>
+#include <clientprefs>
 
 #pragma newdecls required
 #pragma semicolon 1
@@ -76,6 +77,7 @@ int gI_SumSlowScrollsRun[MAXPLAYERS + 1];
 int gI_TimingTotalRun[MAXPLAYERS + 1];
 int gI_TimingSamplesRun[MAXPLAYERS + 1];
 bool gB_PostRunStats[MAXPLAYERS + 1];
+Handle gH_MoreStatsCookie;
 
 // Segment-related variables
 int gI_BhopTicksSegment[MAXPLAYERS + 1][MAX_BHOP_TICKS];
@@ -89,8 +91,31 @@ bool gB_SegmentPaused[MAXPLAYERS + 1];
 
 // ===== [ PLUGIN EVENTS ] =====
 
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
+{
+	if (late)
+	{
+		for (int client = 1; client < MAXPLAYERS + 1; client++)
+		{
+			char buffer[2];
+			GetClientCookie(client, gH_MoreStatsCookie, buffer, sizeof(buffer));
+			gB_PostRunStats[client] = !!StringToInt(buffer);
+		}
+	}
+}
+
 public void OnPluginStart()
 {
+	gH_MoreStatsCookie = RegClientCookie("morestats-cookie", "cookie for more-stats", CookieAccess_Private);
+
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsClientInGame(i) && AreClientCookiesCached(i))
+		{
+        	OnClientCookiesCached(i);
+		}
+	}
+        
 	RegisterCommands();
 	SetupDatabase();
 }
@@ -167,6 +192,13 @@ public void OnClientDisconnect(int client)
 
 	EndPerfStreak(client);
 	SaveClientStats(client);
+}
+
+public void OnClientCookiesCached(int client)
+{
+	char buffer[2];
+	GetClientCookie(client, gH_MoreStatsCookie, buffer, sizeof(buffer));
+	gB_PostRunStats[client] = !!buffer[0]; // "a hack to convert the char to boolean"
 }
 
 public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3], float angles[3], int &weapon, int &subtype, int &cmdnum, int &tickcount, int &seed, int mouse[2])
@@ -270,14 +302,14 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 				}
 				if (!gB_SegmentPaused[client])
 				{
-				gI_SumRegisteredScrollsSegment[client] += registeredScrolls;
-				gI_SumFastScrollsSegment[client] += fastScrolls;
-				gI_SumSlowScrollsSegment[client] += slowScrolls;
-				gI_TimingTotalSegment[client] += timingOffset;
-				gI_TimingSamplesSegment[client]++;
+					gI_SumRegisteredScrollsSegment[client] += registeredScrolls;
+					gI_SumFastScrollsSegment[client] += fastScrolls;
+					gI_SumSlowScrollsSegment[client] += slowScrolls;
+					gI_TimingTotalSegment[client] += timingOffset;
+					gI_TimingSamplesSegment[client]++;					
+				}
 			}
 		}
-	}
 	}
 
 	gI_LastButtons[client] = buttons;
@@ -313,8 +345,8 @@ public void Movement_OnPlayerJump(int client, bool jumpbug)
 		}
 		if (!gB_SegmentPaused[client])
 		{
-		gI_BhopTicksSegment[client][groundTicks]++;
-	}
+			gI_BhopTicksSegment[client][groundTicks]++;
+		}
 	}
 
 	// Perf streaks
@@ -405,8 +437,8 @@ void EndPerfStreak(int client)
 		}
 		if (!gB_SegmentPaused[client])
 		{
-		gI_PerfStreaksSegment[client][index]++;
-	}
+			gI_PerfStreaksSegment[client][index]++;
+		}
 	}
 	gI_CurrentPerfStreak[client] = 0;
 }
@@ -696,6 +728,12 @@ Action CommandPostRunStats(int client, int argc)
 	else
 	{
 		PrintToChat(client, "%s\8Post-run stats disabled.", PREFIX);
+	}
+	if (AreClientCookiesCached(client))
+	{
+		char buffer[2];
+		IntToString(gB_PostRunStats[client], buffer, sizeof(buffer));	
+		SetClientCookie(client, gH_MoreStatsCookie, buffer);
 	}
 	return Plugin_Handled;
 }
