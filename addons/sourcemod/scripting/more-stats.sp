@@ -67,6 +67,7 @@ int gI_SumSlowScrollsSession[MAXPLAYERS + 1];
 int gI_TimingTotalSession[MAXPLAYERS + 1];
 int gI_TimingSamplesSession[MAXPLAYERS + 1];
 
+// GOKZ-related variables
 int gI_BhopTicksRun[MAXPLAYERS + 1][MAX_BHOP_TICKS];
 int gI_PerfStreaksRun[MAXPLAYERS + 1][MAX_PERF_STREAK];
 int gI_SumRegisteredScrollsRun[MAXPLAYERS + 1];
@@ -75,6 +76,16 @@ int gI_SumSlowScrollsRun[MAXPLAYERS + 1];
 int gI_TimingTotalRun[MAXPLAYERS + 1];
 int gI_TimingSamplesRun[MAXPLAYERS + 1];
 bool gB_PostRunStats[MAXPLAYERS + 1];
+
+// Segment-related variables
+int gI_BhopTicksSegment[MAXPLAYERS + 1][MAX_BHOP_TICKS];
+int gI_PerfStreaksSegment[MAXPLAYERS + 1][MAX_PERF_STREAK];
+int gI_SumRegisteredScrollsSegment[MAXPLAYERS + 1];
+int gI_SumFastScrollsSegment[MAXPLAYERS + 1];
+int gI_SumSlowScrollsSegment[MAXPLAYERS + 1];
+int gI_TimingTotalSegment[MAXPLAYERS + 1];
+int gI_TimingSamplesSegment[MAXPLAYERS + 1];
+bool gB_SegmentPaused[MAXPLAYERS + 1];
 
 // ===== [ PLUGIN EVENTS ] =====
 
@@ -127,6 +138,14 @@ public void OnClientConnected(int client)
 	gI_TimingTotalRun[client] = 0;
 	gI_TimingSamplesRun[client] = 0;
 	gB_PostRunStats[client] = false;
+
+	FillArray(gI_BhopTicksSegment[client], sizeof(gI_BhopTicksSegment[]), 0);
+	FillArray(gI_PerfStreaksSegment[client], sizeof(gI_PerfStreaksSegment[]), 0);	
+	gI_SumRegisteredScrollsSegment[client] = 0;
+	gI_SumFastScrollsSegment[client] = 0;
+	gI_SumSlowScrollsSegment[client] = 0;
+	gI_TimingTotalSegment[client] = 0;
+	gI_TimingSamplesSegment[client] = 0;
 }
 
 public void OnClientAuthorized(int client, const char[] auth)
@@ -248,9 +267,17 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 					gI_SumSlowScrollsRun[client] += slowScrolls;
 					gI_TimingTotalRun[client] += timingOffset;
 					gI_TimingSamplesRun[client]++;
-				}				
+				}
+				if (!gB_SegmentPaused[client])
+				{
+				gI_SumRegisteredScrollsSegment[client] += registeredScrolls;
+				gI_SumFastScrollsSegment[client] += fastScrolls;
+				gI_SumSlowScrollsSegment[client] += slowScrolls;
+				gI_TimingTotalSegment[client] += timingOffset;
+				gI_TimingSamplesSegment[client]++;
 			}
 		}
+	}
 	}
 
 	gI_LastButtons[client] = buttons;
@@ -284,6 +311,10 @@ public void Movement_OnPlayerJump(int client, bool jumpbug)
 		{
 			gI_BhopTicksRun[client][groundTicks]++;
 		}
+		if (!gB_SegmentPaused[client])
+		{
+		gI_BhopTicksSegment[client][groundTicks]++;
+	}
 	}
 
 	// Perf streaks
@@ -372,6 +403,10 @@ void EndPerfStreak(int client)
 		{		
 			gI_PerfStreaksRun[client][index]++;
 		}
+		if (!gB_SegmentPaused[client])
+		{
+		gI_PerfStreaksSegment[client][index]++;
+	}
 	}
 	gI_CurrentPerfStreak[client] = 0;
 }
@@ -464,6 +499,13 @@ void RegisterCommands()
 	RegConsoleCmd("sm_runperfstreaks", CommandRunPerfStreaks);	
 	RegConsoleCmd("sm_runscrollstats", CommandRunScrollStats);
 	RegConsoleCmd("sm_postrunstats", CommandPostRunStats);
+	
+	RegConsoleCmd("sm_segmentbhopstats", CommandSegmentBhopStats);
+	RegConsoleCmd("sm_segmentperfstats", CommandSegmentBhopStats);	
+	RegConsoleCmd("sm_segmentperfstreaks", CommandSegmentPerfStreaks);	
+	RegConsoleCmd("sm_segmentscrollstats", CommandSegmentScrollStats);
+	RegConsoleCmd("sm_resetsegment", CommandSegmentReset);
+	RegConsoleCmd("sm_pausesegment", CommandSegmentPause);
 }
 
 Action CommandBhopStats(int client, int argc)
@@ -499,6 +541,20 @@ Action CommandRunBhopStats(int client, int argc)
 
 	PrintBhopStats(client, gI_BhopTicksRun[client], sizeof(gI_BhopTicksRun[]));
 	PrintShortBhopStats(client, gI_BhopTicksRun[client], sizeof(gI_BhopTicksRun[]));
+	PrintCheckConsole(client);
+	
+	return Plugin_Handled;
+}
+
+Action CommandSegmentBhopStats(int client, int argc)
+{
+	if (!gB_Loaded[client])
+	{
+		return Plugin_Handled;
+	}
+
+	PrintBhopStats(client, gI_BhopTicksSegment[client], sizeof(gI_BhopTicksSegment[]));
+	PrintShortBhopStats(client, gI_BhopTicksSegment[client], sizeof(gI_BhopTicksSegment[]));
 	PrintCheckConsole(client);
 	
 	return Plugin_Handled;
@@ -541,6 +597,19 @@ Action CommandRunPerfStreaks(int client, int argc)
 	return Plugin_Handled;
 }
 
+Action CommandSegmentPerfStreaks(int client, int argc)
+{
+	if (!gB_Loaded[client])
+	{
+		return Plugin_Handled;
+	}
+
+	PrintPerfStreaks(client, gI_PerfStreaksSegment[client], sizeof(gI_PerfStreaksSegment[]));
+	PrintCheckConsole(client);
+	return Plugin_Handled;
+}
+
+
 Action CommandScrollStats(int client, int argc)
 {
 	if (!gB_Loaded[client])
@@ -580,7 +649,19 @@ Action CommandRunScrollStats(int client, int argc)
 	PrintCheckConsole(client);
 	return Plugin_Handled;
 }
- 
+
+Action CommandSegmentScrollStats(int client, int argc)
+{
+	if (!gB_Loaded[client])
+	{
+		return Plugin_Handled;
+	}
+
+	PrintScrollStats(client, gI_SumRegisteredScrollsSegment[client], gI_SumFastScrollsSegment[client], 
+		gI_SumSlowScrollsSegment[client], gI_TimingTotalSegment[client], gI_TimingSamplesSegment[client]);
+	PrintCheckConsole(client);
+	return Plugin_Handled;
+}
 
 Action CommandChatScrollStats(int client, int argc)
 {
@@ -615,6 +696,32 @@ Action CommandPostRunStats(int client, int argc)
 	else
 	{
 		PrintToChat(client, "%s\8Post-run stats disabled.", PREFIX);
+	}
+	return Plugin_Handled;
+}
+
+Action CommandSegmentReset(int client, int argc)
+{
+	FillArray(gI_BhopTicksSegment[client], sizeof(gI_BhopTicksSegment[]), 0);
+	FillArray(gI_PerfStreaksSegment[client], sizeof(gI_PerfStreaksSegment[]), 0);	
+	gI_SumRegisteredScrollsSegment[client] = 0;
+	gI_SumFastScrollsSegment[client] = 0;
+	gI_SumSlowScrollsSegment[client] = 0;
+	gI_TimingTotalSegment[client] = 0;
+	gI_TimingSamplesSegment[client] = 0;
+	PrintToChat(client, "%s\8Segment stats have been reset.", PREFIX);
+}
+
+Action CommandSegmentPause(int client, int argc)
+{
+	gB_SegmentPaused[client] = !gB_SegmentPaused[client];
+	if (gB_SegmentPaused[client])
+	{
+		PrintToChat(client, "%s\8Segment stats paused.", PREFIX);
+	}
+	else
+	{
+		PrintToChat(client, "%s\8Segment stats resumed.", PREFIX);
 	}
 	return Plugin_Handled;
 }
