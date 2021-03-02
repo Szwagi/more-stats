@@ -91,31 +91,18 @@ bool gB_SegmentPaused[MAXPLAYERS + 1];
 
 // ===== [ PLUGIN EVENTS ] =====
 
-public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
-{
-	if (late)
-	{
-		for (int client = 1; client < MAXPLAYERS + 1; client++)
-		{
-			char buffer[2];
-			GetClientCookie(client, gH_MoreStatsCookie, buffer, sizeof(buffer));
-			gB_PostRunStats[client] = !!StringToInt(buffer);
-		}
-	}
-}
-
 public void OnPluginStart()
 {
 	gH_MoreStatsCookie = RegClientCookie("morestats-cookie", "cookie for more-stats", CookieAccess_Private);
 
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (IsClientInGame(i) && AreClientCookiesCached(i))
+		if (AreClientCookiesCached(i))
 		{
         	OnClientCookiesCached(i);
 		}
-	}
-        
+	}        
+
 	RegisterCommands();
 	SetupDatabase();
 }
