@@ -95,16 +95,31 @@ public void OnPluginStart()
 {
 	gH_MoreStatsCookie = RegClientCookie("morestats-cookie", "cookie for more-stats", CookieAccess_Private);
 
-	for (int i = 1; i <= MaxClients; i++)
+	// Late-loading support
+	for (int client = 1; client <= MaxClients; client++)
 	{
-		if (AreClientCookiesCached(i))
+		if (IsClientInGame(client) && AreClientCookiesCached(client))
 		{
-        	OnClientCookiesCached(i);
+        	OnClientCookiesCached(client);
+			InitializeClientStats(client);
+			LoadClientStats(client);
 		}
 	}        
 
 	RegisterCommands();
 	SetupDatabase();
+}
+
+public void OnPluginEnd()
+{
+	for (int client = 1; client <= MaxClients; client++)
+	{
+		if(IsClientInGame(client))
+		{
+			EndPerfStreak(client);
+			SaveClientStats(client);
+		}
+	}
 }
 
 
@@ -113,51 +128,7 @@ public void OnPluginStart()
 
 public void OnClientConnected(int client)
 {
-	gB_Loaded[client] = false;
-	gI_TickCount[client] = 0;
-	gI_CmdNum[client] = 0;
-	gI_LastPlusJumpCmdNum[client] = 0;
-	gI_CurrentPerfStreak[client] = 0;
-	FillArray(gI_BhopTicks[client], sizeof(gI_BhopTicks[]), 0);
-	FillArray(gI_BhopTicksSession[client], sizeof(gI_BhopTicksSession[]), 0);
-	FillArray(gI_PerfStreaks[client], sizeof(gI_PerfStreaks[]), 0);
-	FillArray(gI_PerfStreaksSession[client], sizeof(gI_PerfStreaksSession[]), 0);
-	gB_ChatScrollStats[client] = false;
-	gB_Scrolling[client] = false;
-	gI_ScrollGroundTicks[client] = -1;
-	gI_ScrollBhopCmdNum[client] = 0;
-	gI_ScrollStartCmdNum[client] = 0;
-	gI_RegisteredScrolls[client] = 0;
-	gI_FastScrolls[client] = 0;
-	gI_SlowScrolls[client] = 0;
-	gI_LastButtons[client] = 0;
-	gI_SumRegisteredScrolls[client] = 0;
-	gI_SumFastScrolls[client] = 0;
-	gI_SumSlowScrolls[client] = 0;
-	gI_TimingTotal[client] = 0;
-	gI_TimingSamples[client] = 0;
-	gI_SumRegisteredScrollsSession[client] = 0;
-	gI_SumFastScrollsSession[client] = 0;
-	gI_SumSlowScrollsSession[client] = 0;
-	gI_TimingTotalSession[client] = 0;
-	gI_TimingSamplesSession[client] = 0;
-	
-	FillArray(gI_BhopTicksRun[client], sizeof(gI_BhopTicksRun[]), 0);
-	FillArray(gI_PerfStreaksRun[client], sizeof(gI_PerfStreaksRun[]), 0);	
-	gI_SumRegisteredScrollsRun[client] = 0;
-	gI_SumFastScrollsRun[client] = 0;
-	gI_SumSlowScrollsRun[client] = 0;
-	gI_TimingTotalRun[client] = 0;
-	gI_TimingSamplesRun[client] = 0;
-	gB_PostRunStats[client] = false;
-
-	FillArray(gI_BhopTicksSegment[client], sizeof(gI_BhopTicksSegment[]), 0);
-	FillArray(gI_PerfStreaksSegment[client], sizeof(gI_PerfStreaksSegment[]), 0);	
-	gI_SumRegisteredScrollsSegment[client] = 0;
-	gI_SumFastScrollsSegment[client] = 0;
-	gI_SumSlowScrollsSegment[client] = 0;
-	gI_TimingTotalSegment[client] = 0;
-	gI_TimingSamplesSegment[client] = 0;
+	InitializeClientStats(client);
 }
 
 public void OnClientAuthorized(int client, const char[] auth)
@@ -183,6 +154,7 @@ public void OnClientDisconnect(int client)
 
 public void OnClientCookiesCached(int client)
 {
+	InitializeClientStats(client);
 	char buffer[2];
 	GetClientCookie(client, gH_MoreStatsCookie, buffer, sizeof(buffer));
 	gB_PostRunStats[client] = !!buffer[0]; // "a hack to convert the char to boolean"
@@ -361,6 +333,7 @@ public void GOKZ_OnTimerStart_Post(int client, int course)
 	gI_TimingTotalRun[client] = 0;
 	gI_TimingSamplesRun[client] = 0;
 }
+
 public void GOKZ_OnTimerEnd_Post(int client, int course, float time, int teleportsUsed)
 {
 	if (gB_PostRunStats[client])
@@ -378,6 +351,58 @@ public void GOKZ_OnTimerEnd_Post(int client, int course, float time, int telepor
 }
 
 // ===== [ HELPERS ] =====
+
+void InitializeClientStats(int client)
+{
+	gB_Loaded[client] = false;
+	gI_TickCount[client] = 0;
+	gI_CmdNum[client] = 0;
+	gI_LastPlusJumpCmdNum[client] = 0;
+	gI_CurrentPerfStreak[client] = 0;
+	gB_ChatScrollStats[client] = false;
+	gB_Scrolling[client] = false;
+	gI_ScrollGroundTicks[client] = -1;
+	gI_ScrollBhopCmdNum[client] = 0;
+	gI_ScrollStartCmdNum[client] = 0;
+	gI_RegisteredScrolls[client] = 0;
+	gI_FastScrolls[client] = 0;
+	gI_SlowScrolls[client] = 0;
+	gI_LastButtons[client] = 0;
+
+	FillArray(gI_BhopTicks[client], sizeof(gI_BhopTicks[]), 0);
+	FillArray(gI_PerfStreaks[client], sizeof(gI_PerfStreaks[]), 0);
+	gI_SumRegisteredScrolls[client] = 0;
+	gI_SumFastScrolls[client] = 0;
+	gI_SumSlowScrolls[client] = 0;
+	gI_TimingTotal[client] = 0;
+	gI_TimingSamples[client] = 0;
+
+	FillArray(gI_BhopTicksSession[client], sizeof(gI_BhopTicksSession[]), 0);
+	FillArray(gI_PerfStreaksSession[client], sizeof(gI_PerfStreaksSession[]), 0);
+	gI_SumRegisteredScrollsSession[client] = 0;
+	gI_SumFastScrollsSession[client] = 0;
+	gI_SumSlowScrollsSession[client] = 0;
+	gI_TimingTotalSession[client] = 0;
+	gI_TimingSamplesSession[client] = 0;
+	
+	FillArray(gI_BhopTicksRun[client], sizeof(gI_BhopTicksRun[]), 0);
+	FillArray(gI_PerfStreaksRun[client], sizeof(gI_PerfStreaksRun[]), 0);	
+	gI_SumRegisteredScrollsRun[client] = 0;
+	gI_SumFastScrollsRun[client] = 0;
+	gI_SumSlowScrollsRun[client] = 0;
+	gI_TimingTotalRun[client] = 0;
+	gI_TimingSamplesRun[client] = 0;
+	gB_PostRunStats[client] = false;
+
+	FillArray(gI_BhopTicksSegment[client], sizeof(gI_BhopTicksSegment[]), 0);
+	FillArray(gI_PerfStreaksSegment[client], sizeof(gI_PerfStreaksSegment[]), 0);	
+	gI_SumRegisteredScrollsSegment[client] = 0;
+	gI_SumFastScrollsSegment[client] = 0;
+	gI_SumSlowScrollsSegment[client] = 0;
+	gI_TimingTotalSegment[client] = 0;
+	gI_TimingSamplesSegment[client] = 0;
+	gB_SegmentPaused[client] = false;
+}
 
 void FillArray(any[] array, int length, any value)
 {
@@ -505,13 +530,15 @@ void RegisterCommands()
 {
 	RegConsoleCmd("sm_bhopstats", CommandBhopStats);
 	RegConsoleCmd("sm_perfstats", CommandBhopStats);
+	RegConsoleCmd("sm_perfstreaks", CommandPerfStreaks);
+	RegConsoleCmd("sm_scrollstats", CommandScrollStats);
+
+	RegConsoleCmd("sm_chatscrollstats", CommandChatScrollStats);
+
 	RegConsoleCmd("sm_sessionbhopstats", CommandSessionBhopStats);
 	RegConsoleCmd("sm_sessionperfstats", CommandSessionBhopStats);
-	RegConsoleCmd("sm_perfstreaks", CommandPerfStreaks);
 	RegConsoleCmd("sm_sessionperfstreaks", CommandSessionPerfStreaks);
-	RegConsoleCmd("sm_scrollstats", CommandScrollStats);
 	RegConsoleCmd("sm_sessionscrollstats", CommandSessionScrollStats);
-	RegConsoleCmd("sm_chatscrollstats", CommandChatScrollStats);
 	
 	RegConsoleCmd("sm_runbhopstats", CommandRunBhopStats);
 	RegConsoleCmd("sm_runperfstats", CommandRunBhopStats);	
@@ -525,6 +552,9 @@ void RegisterCommands()
 	RegConsoleCmd("sm_segmentscrollstats", CommandSegmentScrollStats);
 	RegConsoleCmd("sm_resetsegment", CommandSegmentReset);
 	RegConsoleCmd("sm_pausesegment", CommandSegmentPause);
+	RegConsoleCmd("sm_unpausesegment", CommandSegmentPause);
+	RegConsoleCmd("sm_togglesegment", CommandSegmentPause);
+	RegConsoleCmd("sm_resumesegment", CommandSegmentPause);
 }
 
 Action CommandBhopStats(int client, int argc)
