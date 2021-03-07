@@ -15,7 +15,7 @@ Plugin to display statistics about various KZ actions.
 ##
 - `!scrollstats` - Display scroll statistics
 - `!sessionscrollstats` - Display scroll statistics since connected
-- `!runscrollstats` - Display scroll statistics of the current run
+- `!runscrollstats` - Display scroll statistics of the current run (GOKZ)
 - `!segmentscrollstats` - Display scroll statsistics of the segment
 - `!chatscrollstats` - Display scroll statistics in chat as they happen 
 ##
