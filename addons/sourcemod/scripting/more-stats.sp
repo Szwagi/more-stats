@@ -344,8 +344,8 @@ public void GOKZ_OnTimerEnd_Post(int client, int course, float time, int telepor
 		PrintToConsole(client, "-----------------------");
 		PrintPerfStreaks(client, gI_PerfStreaksRun[client], sizeof(gI_PerfStreaksRun[]));
 		PrintToConsole(client, "-----------------------");
-		PrintScrollStats(client, gI_SumRegisteredScrolls[client], gI_SumFastScrolls[client], 
-			gI_SumSlowScrolls[client], gI_TimingTotal[client], gI_TimingSamples[client]);
+		PrintScrollStats(client, gI_SumRegisteredScrollsRun[client], gI_SumFastScrollsRun[client], 
+			gI_SumSlowScrollsRun[client], gI_TimingTotalRun[client], gI_TimingSamplesRun[client]);
 	}
 	
 }
