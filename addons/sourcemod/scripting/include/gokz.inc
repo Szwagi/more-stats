@@ -11,6 +11,8 @@
 
 #include <movement>
 
+#include <gokz/version>
+
 
 
 // =====[ ENUMS ]=====
@@ -30,10 +32,12 @@ enum ObsMode
 
 // =====[ CONSTANTS ]=====
 
-#define GOKZ_VERSION "2.0.3"
 #define GOKZ_UPDATER_BASE_URL "http://updater.gokz.org/v2/"
-#define TICK_RATE 128.0
+#define GOKZ_COLLISION_GROUP_STANDARD 2
+#define GOKZ_COLLISION_GROUP_NOTRIGGER 1
+#define GOKZ_TP_FREEZE_TICKS 5
 #define EPSILON 0.000001
+#define PI 3.14159265359
 #define SPEED_NORMAL 250.0
 #define SPEED_NO_WEAPON 260.0
 
@@ -169,7 +173,7 @@ stock int IntMin(int value1, int value2)
  * @param power			Power of 10 to round to.
  * @return				Rounded value.
  */
-stock float RoundToPowerOf10(float value, int power)
+stock float RoundToPowerOfTen(float value, int power)
 {
 	float pow = Pow(10.0, float(power));
 	return RoundFloat(value / pow) * pow;
@@ -239,23 +243,26 @@ stock void EmitSoundToClientSpectators(int client, const char[] sound)
 }
 
 /**
- * Calculates the delta angle between two angles (-180 to 180).
+ * Calculates the lowest angle from angle A to angle B.
+ * Input and result angles are between -180 and 180.
  *
- * @param startAngle	Start angle.
- * @param endAngle		End angle.
+ * @param angleA		Angle A.
+ * @param angleB		Angle B.
  * @return				Delta angle.
  */
-stock float CalcDeltaAngle(float startAngle, float endAngle)
+stock float CalcDeltaAngle(float angleA, float angleB)
 {
-	float difference = endAngle - startAngle;
-	if (difference > 180)
+	float difference = angleB - angleA;
+	
+	if (difference > 180.0)
 	{
-		difference + 360;
+		difference = difference - 360.0;
 	}
-	else if (difference < -180)
+	else if (difference <= -180.0)
 	{
-		difference - 360;
+		difference = difference + 360.0;
 	}
+	
 	return difference;
 }
 
@@ -397,36 +404,102 @@ stock void TeleportPlayer(int client, const float origin[3], const float angles[
 {
 	Movement_SetOrigin(client, origin);
 	Movement_SetEyeAngles(client, angles);
-	Movement_SetVelocity(client, view_as<float>( { 0.0, 0.0, 0.0 } ));
-	Movement_SetBaseVelocity(client, view_as<float>( { 0.0, 0.0, 0.0 } ));
-	Movement_SetGravity(client, 1.0);
-	CreateTimer(0.1, Timer_RemoveBoosts, GetClientUserId(client)); // Prevent booster exploits
 	
 	// Duck the player if there is something blocking them from above
 	Handle trace = TR_TraceHullFilterEx(origin, 
 		origin, 
-		view_as<float>( { -16.0, -16.0, 0.0 } ),  // Players are 32 x 32 x 72
+		view_as<float>( { -16.0, -16.0, 0.0 } ),  // Standing players are 32 x 32 x 72
 		view_as<float>( { 16.0, 16.0, 72.0 } ), 
 		MASK_PLAYERSOLID, 
 		TraceEntityFilterPlayers, 
 		client);
-	if (TR_DidHit(trace))
-	{
-		SetEntPropFloat(client, Prop_Send, "m_flDuckAmount", 1.0, 0);
-	}
+	bool ducked = TR_DidHit(trace);
+	
+	// Prevent noclip exploit
+	SetEntProp(client, Prop_Send, "m_CollisionGroup", GOKZ_COLLISION_GROUP_STANDARD);
+
+	// Intelligently hold player still to prevent booster and trigger exploits
+	StartHoldStill(client, ducked);
+	
 	delete trace;
 }
 
-public Action Timer_RemoveBoosts(Handle timer, int userid)
+static void StartHoldStill(int client, bool ducked)
 {
-	int client = GetClientOfUserId(userid);
-	if (IsValidClient(client))
+	DataPack data = new DataPack();
+	data.WriteCell(GetClientUserId(client));
+	data.WriteCell(0); // tick counter
+	data.WriteCell(GOKZ_TP_FREEZE_TICKS); // number of ticks to hold still
+	data.WriteCell(ducked); 
+	ContinueHoldStill(data);
+}
+
+public void ContinueHoldStill(DataPack data)
+{
+	data.Reset();
+	int client = GetClientOfUserId(data.ReadCell());
+	int ticks = data.ReadCell();
+	int tickCount = data.ReadCell();
+	bool ducked = data.ReadCell();
+	delete data;
+	
+	if (!IsValidClient(client))
+	{
+		return;
+	}
+	
+	if (ticks < tickCount)
 	{
 		Movement_SetVelocity(client, view_as<float>( { 0.0, 0.0, 0.0 } ));
 		Movement_SetBaseVelocity(client, view_as<float>( { 0.0, 0.0, 0.0 } ));
 		Movement_SetGravity(client, 1.0);
+
+		// Don't drop the player off of ladders.
+		// The game will automatically change the movetype back to MOVETYPE_WALK if it can't find a ladder.
+		// Don't change the movetype if it's currently MOVETYPE_NONE, as that means the player is paused.
+		if (Movement_GetMovetype(client) != MOVETYPE_NONE)
+		{
+			Movement_SetMovetype(client, MOVETYPE_LADDER);
+		}
+		
+		// Force duck on player and make sure that the player can't trigger triggers above them.
+		// they can still trigger triggers even when we force ducking.
+		if (ducked)
+		{
+			ForcePlayerDuck(client);
+			
+			if (ticks < tickCount - 1)
+			{
+				// Don't trigger triggers
+				SetEntProp(client, Prop_Send, "m_CollisionGroup", GOKZ_COLLISION_GROUP_NOTRIGGER);
+			}
+			else
+			{
+				// Let the player trigger triggers on the last tick
+				SetEntProp(client, Prop_Send, "m_CollisionGroup", GOKZ_COLLISION_GROUP_STANDARD);
+			}
+		}
+		
+		++ticks;
+		data = new DataPack();
+		data.WriteCell(GetClientUserId(client));
+		data.WriteCell(ticks);
+		data.WriteCell(tickCount);
+		data.WriteCell(ducked);
+		RequestFrame(ContinueHoldStill, data);
 	}
-	return Plugin_Continue;
+}
+
+/**
+ * Forces the player to instantly duck.
+ *
+ * @param client		Client index.
+ */
+stock void ForcePlayerDuck(int client)
+{
+	// these are both necessary, because on their own the player will sometimes still be in a state that isn't fully ducked.
+	SetEntPropFloat(client, Prop_Send, "m_flDuckAmount", 1.0, 0);
+	SetEntProp(client, Prop_Send, "m_bDucking", true);
 }
 
 /**
@@ -445,4 +518,55 @@ stock bool IsPlayerStuck(int client)
 	
 	TR_TraceHullFilter(vecOrigin, vecOrigin, vecMin, vecMax, MASK_PLAYERSOLID, TraceEntityFilterPlayers);
 	return TR_DidHit(); // head in wall ?
+}
+
+/**
+ * Retrieves the name of an entity.
+ *
+ * @param entity			Index of the entity.
+ * @param buffer			Buffer to store the name.
+ * @param maxlength			Maximum length of the buffer.
+ * @return					Number of non-null bytes written.
+ */
+stock int GetEntityName(int entity, char[] buffer, int maxlength)
+{
+	return GetEntPropString(entity, Prop_Data, "m_iName", buffer, maxlength);
+}
+
+/**
+ * Gets the current map's display name in lower case.
+ *
+ * @param buffer			Buffer to store the map name.
+ * @param maxlength			Maximum length of buffer.
+ */
+stock void GetCurrentMapDisplayName(char[] buffer, int maxlength)
+{
+	char map[PLATFORM_MAX_PATH];
+	GetCurrentMap(map, sizeof(map));
+	GetMapDisplayName(map, map, sizeof(map));
+	String_ToLower(map, buffer, maxlength);
+}
+
+/**
+ * Copies the elements of a source vector to a destination vector.
+ *
+ * @param src				Source vector.
+ * @param dest				Destination vector.
+ */
+stock void CopyVector(const any src[3], any dest[3])
+{
+	dest[0] = src[0];
+	dest[1] = src[1];
+	dest[2] = src[2];
+}
+
+/**
+ * Returns whether the player is spectating.
+ *
+ * @param client		Client index.
+ */
+stock bool IsSpectating(int client)
+{
+	int team = GetClientTeam(client);
+	return team == CS_TEAM_SPECTATOR || team == CS_TEAM_NONE;
 } 
