@@ -36,6 +36,7 @@ enum
 #define MAX_PERF_STREAK 24
 #define MAX_SCROLL_TICKS 16
 
+ConVar gCv_sv_autobunnyhopping;
 Database gH_DB;
 bool gB_Loaded[MAXPLAYERS + 1];
 int gI_TickCount[MAXPLAYERS + 1];
@@ -67,10 +68,12 @@ int gI_TimingTotalSession[MAXPLAYERS + 1];
 int gI_TimingSamplesSession[MAXPLAYERS + 1];
 
 
+
 // ===== [ PLUGIN EVENTS ] =====
 
 public void OnPluginStart()
 {
+	SetupConVars();
 	RegisterCommands();
 	SetupDatabase();
 }
@@ -144,6 +147,14 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 
 	if (!gB_Loaded[client])
 	{
+		return Plugin_Continue;
+	}
+
+	if (gCv_sv_autobunnyhopping.BoolValue)
+	{
+		EndPerfStreak(client);
+		gB_Scrolling[client] = false;
+		gI_LastButtons[client] = buttons;
 		return Plugin_Continue;
 	}
 
@@ -233,7 +244,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 
 public void Movement_OnPlayerJump(int client, bool jumpbug)
 {
-	if (!gB_Loaded[client] || IsFakeClient(client))
+	if (!gB_Loaded[client] || IsFakeClient(client) || gCv_sv_autobunnyhopping.BoolValue)
 	{
 		return;
 	}
@@ -375,6 +386,11 @@ void PrintScrollStats(int client, int registeredScrolls, int fastScrolls, int sl
 
 
 // ===== [ COMMANDS ] =====
+
+void SetupConVars()
+{
+	gCv_sv_autobunnyhopping = FindConVar("sv_autobunnyhopping");
+}
 
 void RegisterCommands()
 {
