@@ -152,7 +152,6 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 
 	if (gCv_sv_autobunnyhopping.BoolValue)
 	{
-		EndPerfStreak(client);
 		gB_Scrolling[client] = false;
 		gI_LastButtons[client] = buttons;
 		return Plugin_Continue;
@@ -244,8 +243,14 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 
 public void Movement_OnPlayerJump(int client, bool jumpbug)
 {
-	if (!gB_Loaded[client] || IsFakeClient(client) || gCv_sv_autobunnyhopping.BoolValue)
+	if (!gB_Loaded[client] || IsFakeClient(client))
 	{
+		return;
+	}
+
+	if (gCv_sv_autobunnyhopping.BoolValue)
+	{
+		EndPerfStreak(client);
 		return;
 	}
 
