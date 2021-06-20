@@ -185,5 +185,5 @@ void InitializeClientStats(int client)
 
 void SetupConVars()
 {
-	gCv_sv_autobunnyhopping = FindConVar("sv_autobunnyhopping");
+	gCV_sv_autobunnyhopping = FindConVar("sv_autobunnyhopping");
 }
