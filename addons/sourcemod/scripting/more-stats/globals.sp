@@ -2,7 +2,7 @@
 public bool gB_LateLoaded;
 // BhopStats variables
 public Database gH_DB;
-
+public ConVar gCV_sv_autobunnyhopping;
 public bool gB_BhopStatsLoaded[MAXPLAYERS + 1];
 public int gI_TickCount[MAXPLAYERS + 1];
 public int gI_CmdNum[MAXPLAYERS + 1];

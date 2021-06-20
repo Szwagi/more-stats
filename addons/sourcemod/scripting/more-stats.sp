@@ -41,7 +41,7 @@ public void OnPluginStart()
 	gH_MoreStatsCookie = RegClientCookie("morestats-cookie", "cookie for more-stats", CookieAccess_Private);
 	RegisterCommands();
 	SetupDatabase();
-
+	SetupConVars();
 	// Late-loading support
 	for (int client = 1; client <= MaxClients; client++)
 	{
@@ -181,4 +181,9 @@ void InitializeClientStats(int client)
 	InitializeBhopStats(client);
 	InitializeResetStats(client);
 	InitializeAirStats(client);
+}
+
+void SetupConVars()
+{
+	gCv_sv_autobunnyhopping = FindConVar("sv_autobunnyhopping");
 }

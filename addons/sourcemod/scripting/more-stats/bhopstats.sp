@@ -49,6 +49,13 @@ void OnPlayerRunCmd_BhopStats(int client, int &buttons, int &cmdnum, int &tickco
 		return;
 	}
 
+	if (gCv_sv_autobunnyhopping.BoolValue)
+	{
+		gB_Scrolling[client] = false;
+		gI_LastButtons[client] = buttons;
+		return;
+	}
+
 	// Scroll stats, we eating spaghettios tonight
 	int lastButtons = gI_LastButtons[client];
 
@@ -294,6 +301,12 @@ void GOKZ_OnTimerStart_Post_BhopStats(int client)
 
 void Movement_OnPlayerJump_BhopStats(int client, int jumpbug)
 {
+	if (gCv_sv_autobunnyhopping.BoolValue)
+	{
+		EndPerfStreak(client);
+		return;
+	}
+	
 	if (jumpbug)
 	{
 		IncrementVariable(client, gI_GOKZPerfCount[client][GOKZ_GetCoreOption(client, Option_Mode)]);
