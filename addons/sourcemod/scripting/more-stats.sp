@@ -2,126 +2,71 @@
 #include <movementapi>
 #include <gokz/core>
 #include <clientprefs>
+#include <more-stats>
+
+#include "more-stats/globals.sp"
+#include "more-stats/helpers.sp"
+#include "more-stats/databases.sp"
+#include "more-stats/bhopstats.sp"
+#include "more-stats/resetstats.sp"
+#include "more-stats/airstats.sp"
+#include "more-stats/commands.sp"
+#include "more-stats/natives.sp"
 
 #pragma newdecls required
 #pragma semicolon 1
 
 
-
-public Plugin myinfo = 
+public Plugin myinfo =
 {
-	name = "More Stats", 
-	author = "Szwagi", 
-	description = "Tracks various KZ related statistics", 
-	version = "v1.1.0", 
-	url = "https://github.com/Szwagi/more-stats"
+	name = "More Stats",
+	author = "Szwagi, zer0.k",
+	description = "Tracks various KZ related statistics",
+	version = "v2.0.0",
+	url = "https://github.com/zer0k-z/more-stats"
 };
-
-enum
-{
-	StatType_BhopStats,
-	StatType_PerfStreaks,
-	StatType_ScrollEff
-};
-
-enum
-{
-	ScrollEff_RegisteredScrolls,
-	ScrollEff_FastScrolls,
-	ScrollEff_SlowScrolls,
-	ScrollEff_TimingTotal,
-	ScrollEff_TimingSamples
-};
-
-#define PREFIX " \4KZ \8| "
-#define MAX_BHOP_TICKS 8
-#define MAX_PERF_STREAK 24
-#define MAX_SCROLL_TICKS 16
-
-Database gH_DB;
-bool gB_Loaded[MAXPLAYERS + 1];
-int gI_TickCount[MAXPLAYERS + 1];
-int gI_CmdNum[MAXPLAYERS + 1];
-int gI_LastPlusJumpCmdNum[MAXPLAYERS + 1];
-int gI_CurrentPerfStreak[MAXPLAYERS + 1];
-int gI_BhopTicks[MAXPLAYERS + 1][MAX_BHOP_TICKS];
-int gI_BhopTicksSession[MAXPLAYERS + 1][MAX_BHOP_TICKS];
-int gI_PerfStreaks[MAXPLAYERS + 1][MAX_PERF_STREAK];
-int gI_PerfStreaksSession[MAXPLAYERS + 1][MAX_PERF_STREAK];
-bool gB_ChatScrollStats[MAXPLAYERS + 1];
-bool gB_Scrolling[MAXPLAYERS + 1];
-int gI_ScrollGroundTicks[MAXPLAYERS + 1];
-int gI_ScrollBhopCmdNum[MAXPLAYERS + 1];
-int gI_ScrollStartCmdNum[MAXPLAYERS + 1];
-int gI_RegisteredScrolls[MAXPLAYERS + 1];
-int gI_FastScrolls[MAXPLAYERS + 1];
-int gI_SlowScrolls[MAXPLAYERS + 1];
-int gI_LastButtons[MAXPLAYERS + 1];
-int gI_SumRegisteredScrolls[MAXPLAYERS + 1];
-int gI_SumFastScrolls[MAXPLAYERS + 1];
-int gI_SumSlowScrolls[MAXPLAYERS + 1];
-int gI_TimingTotal[MAXPLAYERS + 1];
-int gI_TimingSamples[MAXPLAYERS + 1];
-int gI_SumRegisteredScrollsSession[MAXPLAYERS + 1];
-int gI_SumFastScrollsSession[MAXPLAYERS + 1];
-int gI_SumSlowScrollsSession[MAXPLAYERS + 1];
-int gI_TimingTotalSession[MAXPLAYERS + 1];
-int gI_TimingSamplesSession[MAXPLAYERS + 1];
-
-// GOKZ-related variables
-int gI_BhopTicksRun[MAXPLAYERS + 1][MAX_BHOP_TICKS];
-int gI_PerfStreaksRun[MAXPLAYERS + 1][MAX_PERF_STREAK];
-int gI_SumRegisteredScrollsRun[MAXPLAYERS + 1];
-int gI_SumFastScrollsRun[MAXPLAYERS + 1];
-int gI_SumSlowScrollsRun[MAXPLAYERS + 1];
-int gI_TimingTotalRun[MAXPLAYERS + 1];
-int gI_TimingSamplesRun[MAXPLAYERS + 1];
-bool gB_PostRunStats[MAXPLAYERS + 1];
-Handle gH_MoreStatsCookie;
-
-// Segment-related variables
-int gI_BhopTicksSegment[MAXPLAYERS + 1][MAX_BHOP_TICKS];
-int gI_PerfStreaksSegment[MAXPLAYERS + 1][MAX_PERF_STREAK];
-int gI_SumRegisteredScrollsSegment[MAXPLAYERS + 1];
-int gI_SumFastScrollsSegment[MAXPLAYERS + 1];
-int gI_SumSlowScrollsSegment[MAXPLAYERS + 1];
-int gI_TimingTotalSegment[MAXPLAYERS + 1];
-int gI_TimingSamplesSegment[MAXPLAYERS + 1];
-bool gB_SegmentPaused[MAXPLAYERS + 1];
 
 // ===== [ PLUGIN EVENTS ] =====
+
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
+{
+	CreateNatives();
+	RegPluginLibrary("more-stats");
+	gB_LateLoaded = late;
+	return APLRes_Success;
+}
 
 public void OnPluginStart()
 {
 	gH_MoreStatsCookie = RegClientCookie("morestats-cookie", "cookie for more-stats", CookieAccess_Private);
+	RegisterCommands();
+	SetupDatabase();
 
 	// Late-loading support
 	for (int client = 1; client <= MaxClients; client++)
 	{
 		if (IsClientInGame(client) && AreClientCookiesCached(client))
 		{
-        	OnClientCookiesCached(client);
+			OnClientCookiesCached(client);
 			InitializeClientStats(client);
 			LoadClientStats(client);
 		}
-	}        
-
-	RegisterCommands();
-	SetupDatabase();
+	}
 }
 
 public void OnPluginEnd()
 {
 	for (int client = 1; client <= MaxClients; client++)
 	{
-		if(IsClientInGame(client))
+		if (IsClientInGame(client))
 		{
 			EndPerfStreak(client);
-			SaveClientStats(client);
+			SaveClientBhopStats(client);
+			SaveClientResetStats(client);
+			SaveClientAirStats(client);
 		}
 	}
 }
-
 
 
 // ===== [ CLIENT EVENTS ] =====
@@ -142,14 +87,16 @@ public void OnClientAuthorized(int client, const char[] auth)
 }
 
 public void OnClientDisconnect(int client)
-{	
+{
 	if (IsFakeClient(client))
 	{
 		return;
 	}
 
 	EndPerfStreak(client);
-	SaveClientStats(client);
+	SaveClientBhopStats(client);
+	SaveClientResetStats(client);
+	SaveClientAirStats(client);
 }
 
 public void OnClientCookiesCached(int client)
@@ -157,7 +104,7 @@ public void OnClientCookiesCached(int client)
 	InitializeClientStats(client);
 	char buffer[2];
 	GetClientCookie(client, gH_MoreStatsCookie, buffer, sizeof(buffer));
-	gB_PostRunStats[client] = !!buffer[0]; // "a hack to convert the char to boolean"
+	gB_PostRunStats[client] = !!StringToInt(buffer[0]); // "a hack to convert the char to boolean"
 }
 
 public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3], float angles[3], int &weapon, int &subtype, int &cmdnum, int &tickcount, int &seed, int mouse[2])
@@ -167,171 +114,52 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 		return Plugin_Continue;
 	}
 
-	gI_TickCount[client] = tickcount;
-	gI_CmdNum[client] = cmdnum;
-
-	if (!gB_Loaded[client])
-	{
-		return Plugin_Continue;
-	}
-
-	// Scroll stats, we eating spaghettios tonight
-	int lastButtons = gI_LastButtons[client];
-
-	bool inJump = (buttons & IN_JUMP) != 0;
-	bool lastInJump = (lastButtons & IN_JUMP) != 0;
-
-	if (gB_Scrolling[client])
-	{
-		if (inJump && !lastInJump)
-		{
-			gI_RegisteredScrolls[client]++;
-		}
-		else if (inJump && lastInJump)
-		{
-			gI_FastScrolls[client]++;
-		}
-		else if (!inJump && !lastInJump)
-		{
-			gI_SlowScrolls[client]++;
-		}
-	}
-
-	if (inJump)
-	{
-		if (cmdnum > gI_LastPlusJumpCmdNum[client] + MAX_SCROLL_TICKS)
-		{
-			// Started scrolling
-			gB_Scrolling[client] = true;
-			gI_ScrollGroundTicks[client] = -1;
-			gI_ScrollStartCmdNum[client] = cmdnum;
-			gI_RegisteredScrolls[client] = 1;
-			gI_FastScrolls[client] = 0;
-			gI_SlowScrolls[client] = 0;
-		}
-		gI_LastPlusJumpCmdNum[client] = cmdnum;
-	}
-	else if (gB_Scrolling[client])
-	{
-		if (cmdnum > gI_LastPlusJumpCmdNum[client] + MAX_SCROLL_TICKS)
-		{
-			// Stopped scrolling
-			gB_Scrolling[client] = false;
-
-			bool scrollCausedBhop = (gI_ScrollGroundTicks[client] >= 0);
-			int registeredScrolls = gI_RegisteredScrolls[client];
-			if (registeredScrolls > 2 && scrollCausedBhop)
-			{
-				int fastScrolls = gI_FastScrolls[client];
-				int slowScrolls = gI_SlowScrolls[client] - MAX_SCROLL_TICKS;
-
-				int timingOffset = GetScrollTimingOffset(gI_ScrollStartCmdNum[client], gI_LastPlusJumpCmdNum[client], gI_ScrollBhopCmdNum[client]);
-
-				if (gB_ChatScrollStats[client])
-				{
-					float effectivenessPercent = GetScrollEffectivenessPercent(registeredScrolls, fastScrolls, slowScrolls);
-					int groundTicks = gI_ScrollGroundTicks[client];
-					PrintToChat(client, "%s\6%d \8Scrolls (\6%0.0f%%\8) | \6%d \8/ \6%d \8Speed | \6%s%d \8Time | \6%d \8Ground", 
-						PREFIX, 
-						registeredScrolls, effectivenessPercent, 
-						slowScrolls, fastScrolls, 
-						timingOffset >= 0 ? "+" : "", timingOffset, 
-						groundTicks);
-				}
-
-				gI_SumRegisteredScrolls[client] += registeredScrolls;
-				gI_SumFastScrolls[client] += fastScrolls;
-				gI_SumSlowScrolls[client] += slowScrolls;
-				gI_SumRegisteredScrollsSession[client] += registeredScrolls;
-				gI_SumFastScrollsSession[client] += fastScrolls;
-				gI_SumSlowScrollsSession[client] += slowScrolls;
-
-				gI_TimingTotal[client] += timingOffset;
-				gI_TimingSamples[client]++;
-				gI_TimingTotalSession[client] += timingOffset;
-				gI_TimingSamplesSession[client]++;
-
-				if (GOKZ_GetTimerRunning(client))
-				{			
-					gI_SumRegisteredScrollsRun[client] += registeredScrolls;
-					gI_SumFastScrollsRun[client] += fastScrolls;
-					gI_SumSlowScrollsRun[client] += slowScrolls;
-					gI_TimingTotalRun[client] += timingOffset;
-					gI_TimingSamplesRun[client]++;
-				}
-				if (!gB_SegmentPaused[client])
-				{
-					gI_SumRegisteredScrollsSegment[client] += registeredScrolls;
-					gI_SumFastScrollsSegment[client] += fastScrolls;
-					gI_SumSlowScrollsSegment[client] += slowScrolls;
-					gI_TimingTotalSegment[client] += timingOffset;
-					gI_TimingSamplesSegment[client]++;					
-				}
-			}
-		}
-	}
-
-	gI_LastButtons[client] = buttons;
-
+	OnPlayerRunCmd_BhopStats(client, buttons, cmdnum, tickcount);
+	
 	return Plugin_Continue;
+}
+
+public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float vel[3], const float angles[3], int weapon, int subtype, int cmdnum, int tickcount, int seed, const int mouse[2])
+{
+	OnPlayerRunCmdPost_AirStats(client, buttons, vel, angles);
+	gB_OldOnGround[client] = Movement_GetOnGround(client);
+}
+
+public void GOKZ_OnOptionChanged(int client, const char[] option, any newValue)
+{
+	GOKZ_OnOptionChanged_BhopStats(client, option);
 }
 
 public void Movement_OnPlayerJump(int client, bool jumpbug)
 {
-	if (!gB_Loaded[client] || IsFakeClient(client))
+	if (!gB_BhopStatsLoaded[client] || IsFakeClient(client))
 	{
 		return;
 	}
 
-	int landingTick = Movement_GetLandingTick(client);
-	int groundTicks = gI_TickCount[client] - landingTick - 1;
+	Movement_OnPlayerJump_BhopStats(client, jumpbug);
+}
 
-	// Scroll stats
-	if (groundTicks >= 0 && groundTicks < MAX_BHOP_TICKS)
-	{
-		gI_ScrollGroundTicks[client] = groundTicks;
-		gI_ScrollBhopCmdNum[client] = gI_CmdNum[client];
-	}
-
-	// Bhop stats
-	if (groundTicks >= 0 && groundTicks < MAX_BHOP_TICKS)
-	{
-		gI_BhopTicks[client][groundTicks]++;
-		gI_BhopTicksSession[client][groundTicks]++;
-		if (GOKZ_GetTimerRunning(client))
-		{
-			gI_BhopTicksRun[client][groundTicks]++;
-		}
-		if (!gB_SegmentPaused[client])
-		{
-			gI_BhopTicksSegment[client][groundTicks]++;
-		}
-	}
-
-	// Perf streaks
-	if (groundTicks == 0)
-	{
-		int streak = gI_CurrentPerfStreak[client];
-		if (streak < MAX_PERF_STREAK)
-		{
-			gI_CurrentPerfStreak[client]++;
-		}
-	}
-	else
-	{
-		EndPerfStreak(client);
-	}
+public void Movement_OnStopTouchGround(int client, bool jumped)
+{
+	Movement_OnStopTouchGround_BhopStats(client, jumped);
+}
+public Action GOKZ_OnTimerStart(int client, int course)
+{
+	GOKZ_OnTimerStart_ResetStats(client, course);
+	return Plugin_Continue;
 }
 
 public void GOKZ_OnTimerStart_Post(int client, int course)
 {
-	FillArray(gI_BhopTicksRun[client], sizeof(gI_BhopTicksRun[]), 0);
-	FillArray(gI_PerfStreaksRun[client], sizeof(gI_PerfStreaksRun[]), 0);	
-	gI_SumRegisteredScrollsRun[client] = 0;
-	gI_SumFastScrollsRun[client] = 0;
-	gI_SumSlowScrollsRun[client] = 0;
-	gI_TimingTotalRun[client] = 0;
-	gI_TimingSamplesRun[client] = 0;
+	GOKZ_OnTimerStart_Post_BhopStats(client);
+	GOKZ_OnTimerStart_Post_AirStats(client);
+}
+
+public Action GOKZ_OnTimerEnd(int client, int course, float time, int teleportsUsed)
+{
+	GOKZ_OnTimerEnd_ResetStats(client, course, teleportsUsed);
+	return Plugin_Continue;
 }
 
 public void GOKZ_OnTimerEnd_Post(int client, int course, float time, int teleportsUsed)
@@ -340,600 +168,17 @@ public void GOKZ_OnTimerEnd_Post(int client, int course, float time, int telepor
 	{
 		PrintToConsole(client, "Player: %N, Course: %i, Time: %f, TPs: %i", client, course, time, teleportsUsed);
 		PrintToConsole(client, "-----------------------");
-		PrintBhopStats(client, gI_BhopTicksRun[client], sizeof(gI_BhopTicksRun[]));
-		PrintToConsole(client, "-----------------------");
-		PrintPerfStreaks(client, gI_PerfStreaksRun[client], sizeof(gI_PerfStreaksRun[]));
-		PrintToConsole(client, "-----------------------");
-		PrintScrollStats(client, gI_SumRegisteredScrollsRun[client], gI_SumFastScrollsRun[client], 
-			gI_SumSlowScrollsRun[client], gI_TimingTotalRun[client], gI_TimingSamplesRun[client]);
+		GOKZ_OnTimerEnd_Post_BhopStats(client);
+		GOKZ_OnTimerEnd_Post_AirStats(client);
 	}
-	
 }
 
 // ===== [ HELPERS ] =====
 
 void InitializeClientStats(int client)
 {
-	gB_Loaded[client] = false;
-	gI_TickCount[client] = 0;
-	gI_CmdNum[client] = 0;
-	gI_LastPlusJumpCmdNum[client] = 0;
-	gI_CurrentPerfStreak[client] = 0;
-	gB_ChatScrollStats[client] = false;
-	gB_Scrolling[client] = false;
-	gI_ScrollGroundTicks[client] = -1;
-	gI_ScrollBhopCmdNum[client] = 0;
-	gI_ScrollStartCmdNum[client] = 0;
-	gI_RegisteredScrolls[client] = 0;
-	gI_FastScrolls[client] = 0;
-	gI_SlowScrolls[client] = 0;
-	gI_LastButtons[client] = 0;
-
-	FillArray(gI_BhopTicks[client], sizeof(gI_BhopTicks[]), 0);
-	FillArray(gI_PerfStreaks[client], sizeof(gI_PerfStreaks[]), 0);
-	gI_SumRegisteredScrolls[client] = 0;
-	gI_SumFastScrolls[client] = 0;
-	gI_SumSlowScrolls[client] = 0;
-	gI_TimingTotal[client] = 0;
-	gI_TimingSamples[client] = 0;
-
-	FillArray(gI_BhopTicksSession[client], sizeof(gI_BhopTicksSession[]), 0);
-	FillArray(gI_PerfStreaksSession[client], sizeof(gI_PerfStreaksSession[]), 0);
-	gI_SumRegisteredScrollsSession[client] = 0;
-	gI_SumFastScrollsSession[client] = 0;
-	gI_SumSlowScrollsSession[client] = 0;
-	gI_TimingTotalSession[client] = 0;
-	gI_TimingSamplesSession[client] = 0;
-	
-	FillArray(gI_BhopTicksRun[client], sizeof(gI_BhopTicksRun[]), 0);
-	FillArray(gI_PerfStreaksRun[client], sizeof(gI_PerfStreaksRun[]), 0);	
-	gI_SumRegisteredScrollsRun[client] = 0;
-	gI_SumFastScrollsRun[client] = 0;
-	gI_SumSlowScrollsRun[client] = 0;
-	gI_TimingTotalRun[client] = 0;
-	gI_TimingSamplesRun[client] = 0;
-	gB_PostRunStats[client] = false;
-
-	FillArray(gI_BhopTicksSegment[client], sizeof(gI_BhopTicksSegment[]), 0);
-	FillArray(gI_PerfStreaksSegment[client], sizeof(gI_PerfStreaksSegment[]), 0);	
-	gI_SumRegisteredScrollsSegment[client] = 0;
-	gI_SumFastScrollsSegment[client] = 0;
-	gI_SumSlowScrollsSegment[client] = 0;
-	gI_TimingTotalSegment[client] = 0;
-	gI_TimingSamplesSegment[client] = 0;
 	gB_SegmentPaused[client] = false;
-}
-
-void FillArray(any[] array, int length, any value)
-{
-	for (int i = 0; i < length; i++)
-	{
-		array[i] = value;
-	}
-}
-
-float GetScrollEffectivenessPercent(int registeredScrolls, int fastScrolls, int slowScrolls)
-{
-	int badScrolls = fastScrolls + slowScrolls;
-	if (registeredScrolls + badScrolls == 0)
-	{
-		return 0.0;
-	}
-
-	float effectiveness = registeredScrolls / (float(registeredScrolls) + (float(badScrolls) / 1.5));
-	return effectiveness * 100.0;
-}
-
-int GetScrollTimingOffset(int begin, int end, int bhop)
-{
-	int middle = RoundFloat((begin + end) / 2.0);
-	int rawOffset = (middle - bhop);
-	if (rawOffset >= -1 && rawOffset <= 1)
-	{
-		return 0;
-	}
-	return (rawOffset > 1) ? rawOffset - 1 : rawOffset + 1;
-}
-
-void EndPerfStreak(int client)
-{
-	int streak = gI_CurrentPerfStreak[client];
-	if (streak > 0 && streak <= MAX_PERF_STREAK)
-	{
-		int index = streak - 1;
-		gI_PerfStreaks[client][index]++;
-		gI_PerfStreaksSession[client][index]++;
-		if (GOKZ_GetTimerRunning(client))
-		{		
-			gI_PerfStreaksRun[client][index]++;
-		}
-		if (!gB_SegmentPaused[client])
-		{
-			gI_PerfStreaksSegment[client][index]++;
-		}
-	}
-	gI_CurrentPerfStreak[client] = 0;
-}
-
-void PrintCheckConsole(int client)
-{
-	PrintToChat(client, "%sCheck console for results!", PREFIX);
-}
-
-void PrintBhopStats(int client, const int[] bhopTicks, int length)
-{
-	int sum = 0;
-	for (int i = 0; i < length; i++)
-	{
-		sum += bhopTicks[i];
-	}
-
-	PrintToConsole(client, "Bhop Stats (%d bhops)", sum);
-	PrintToConsole(client, "-----------------------");
-
-	for (int i = 0; i < length; i++)
-	{
-		int tick = i + 1;
-		int count = bhopTicks[i];
-		float percent = (sum == 0) ? 0.0 : count / float(sum) * 100.0;
-		PrintToConsole(client, "Tick %d: %6d | %5.2f%%", tick, count, percent);
-	}
-}
-
-void PrintShortBhopStats(int client, const int[] bhopTicks, int length)
-{
-	int sum = 0;
-	for (int i = 0; i < length; i++)
-	{
-		sum += bhopTicks[i];
-	}
-	int count = bhopTicks[0];
-	float percent = (sum == 0) ? 0.0: count / float(sum) * 100.0;
-	PrintToChat(client, "%s\6%N\8: \6%5.2f%% \8Perfs", PREFIX, client, percent);
-}
-
-void PrintPerfStreaks(int client, const int[] perfStreaks, int length)
-{
-	int sum = 0;
-	for (int i = 0; i < MAX_PERF_STREAK; i++)
-	{
-		sum += perfStreaks[i];
-	}
-
-	PrintToConsole(client, "Perf Streaks (%d streaks)", sum);
-	PrintToConsole(client, "-------------------------");
-	for (int i = 0; i < length; i++)
-	{
-		int streak = i + 1;
-		int count = perfStreaks[i];
-		float percent = (sum == 0) ? 0.0 : count / float(sum) * 100.0;
-		PrintToConsole(client, "Perfs %2d: %6d | %5.2f%%", streak, count, percent);
-	}
-}
-
-void PrintScrollStats(int client, int registeredScrolls, int fastScrolls, int slowScrolls, int timingTotal, int timingSamples)
-{
-	PrintToConsole(client, "Scroll Stats (%d scrolls)", registeredScrolls);
-	PrintToConsole(client, "-------------------------");
-	PrintToConsole(client, "Effectiveness: %0.2f%%", GetScrollEffectivenessPercent(registeredScrolls, fastScrolls, slowScrolls));
-	PrintToConsole(client, "Speed: %d / %d", slowScrolls, fastScrolls);
-	
-	float timingOffset = (timingSamples == 0) ? 0.0 : timingTotal / float(timingSamples);
-	PrintToConsole(client, "Time: %s%0.2f", timingOffset >= 0.0 ? "+" : "", timingOffset);
-}
-
-
-
-// ===== [ COMMANDS ] =====
-
-void RegisterCommands()
-{
-	RegConsoleCmd("sm_bhopstats", CommandBhopStats);
-	RegConsoleCmd("sm_perfstats", CommandBhopStats);
-	RegConsoleCmd("sm_perfstreaks", CommandPerfStreaks);
-	RegConsoleCmd("sm_scrollstats", CommandScrollStats);
-
-	RegConsoleCmd("sm_chatscrollstats", CommandChatScrollStats);
-
-	RegConsoleCmd("sm_sessionbhopstats", CommandSessionBhopStats);
-	RegConsoleCmd("sm_sessionperfstats", CommandSessionBhopStats);
-	RegConsoleCmd("sm_sessionperfstreaks", CommandSessionPerfStreaks);
-	RegConsoleCmd("sm_sessionscrollstats", CommandSessionScrollStats);
-	
-	RegConsoleCmd("sm_runbhopstats", CommandRunBhopStats);
-	RegConsoleCmd("sm_runperfstats", CommandRunBhopStats);	
-	RegConsoleCmd("sm_runperfstreaks", CommandRunPerfStreaks);	
-	RegConsoleCmd("sm_runscrollstats", CommandRunScrollStats);
-	RegConsoleCmd("sm_postrunstats", CommandPostRunStats);
-	
-	RegConsoleCmd("sm_segmentbhopstats", CommandSegmentBhopStats);
-	RegConsoleCmd("sm_segmentperfstats", CommandSegmentBhopStats);	
-	RegConsoleCmd("sm_segmentperfstreaks", CommandSegmentPerfStreaks);	
-	RegConsoleCmd("sm_segmentscrollstats", CommandSegmentScrollStats);
-	RegConsoleCmd("sm_resetsegment", CommandSegmentReset);
-	RegConsoleCmd("sm_pausesegment", CommandSegmentPause);
-	RegConsoleCmd("sm_unpausesegment", CommandSegmentPause);
-	RegConsoleCmd("sm_togglesegment", CommandSegmentPause);
-	RegConsoleCmd("sm_resumesegment", CommandSegmentPause);
-}
-
-Action CommandBhopStats(int client, int argc)
-{
-	if (!gB_Loaded[client])
-	{
-		return Plugin_Handled;
-	}
-
-	PrintBhopStats(client, gI_BhopTicks[client], sizeof(gI_BhopTicks[]));
-	PrintCheckConsole(client);
-	return Plugin_Handled;
-}
-
-Action CommandSessionBhopStats(int client, int argc)
-{
-	if (!gB_Loaded[client])
-	{
-		return Plugin_Handled;
-	}
-
-	PrintBhopStats(client, gI_BhopTicksSession[client], sizeof(gI_BhopTicksSession[]));
-	PrintCheckConsole(client);
-	return Plugin_Handled;
-}
-
-Action CommandRunBhopStats(int client, int argc)
-{
-	if (!gB_Loaded[client])
-	{
-		return Plugin_Handled;
-	}
-
-	PrintBhopStats(client, gI_BhopTicksRun[client], sizeof(gI_BhopTicksRun[]));
-	PrintShortBhopStats(client, gI_BhopTicksRun[client], sizeof(gI_BhopTicksRun[]));
-	PrintCheckConsole(client);
-	
-	return Plugin_Handled;
-}
-
-Action CommandSegmentBhopStats(int client, int argc)
-{
-	if (!gB_Loaded[client])
-	{
-		return Plugin_Handled;
-	}
-
-	PrintBhopStats(client, gI_BhopTicksSegment[client], sizeof(gI_BhopTicksSegment[]));
-	PrintShortBhopStats(client, gI_BhopTicksSegment[client], sizeof(gI_BhopTicksSegment[]));
-	PrintCheckConsole(client);
-	
-	return Plugin_Handled;
-}
-
-Action CommandPerfStreaks(int client, int argc)
-{
-	if (!gB_Loaded[client])
-	{
-		return Plugin_Handled;
-	}
-
-	PrintPerfStreaks(client, gI_PerfStreaks[client], sizeof(gI_PerfStreaks[]));
-	PrintCheckConsole(client);
-	return Plugin_Handled;
-}
-
-Action CommandSessionPerfStreaks(int client, int argc)
-{
-	if (!gB_Loaded[client])
-	{
-		return Plugin_Handled;
-	}
-
-	PrintPerfStreaks(client, gI_PerfStreaksSession[client], sizeof(gI_PerfStreaksSession[]));
-	PrintCheckConsole(client);
-	return Plugin_Handled;
-}
-
-
-Action CommandRunPerfStreaks(int client, int argc)
-{
-	if (!gB_Loaded[client])
-	{
-		return Plugin_Handled;
-	}
-
-	PrintPerfStreaks(client, gI_PerfStreaksRun[client], sizeof(gI_PerfStreaksRun[]));
-	PrintCheckConsole(client);
-	return Plugin_Handled;
-}
-
-Action CommandSegmentPerfStreaks(int client, int argc)
-{
-	if (!gB_Loaded[client])
-	{
-		return Plugin_Handled;
-	}
-
-	PrintPerfStreaks(client, gI_PerfStreaksSegment[client], sizeof(gI_PerfStreaksSegment[]));
-	PrintCheckConsole(client);
-	return Plugin_Handled;
-}
-
-
-Action CommandScrollStats(int client, int argc)
-{
-	if (!gB_Loaded[client])
-	{
-		return Plugin_Handled;
-	}
-
-	PrintScrollStats(client, gI_SumRegisteredScrolls[client], gI_SumFastScrolls[client], 
-		gI_SumSlowScrolls[client], gI_TimingTotal[client], gI_TimingSamples[client]);
-	PrintCheckConsole(client);
-	return Plugin_Handled;
-}
-
-Action CommandSessionScrollStats(int client, int argc)
-{
-	if (!gB_Loaded[client])
-	{
-		return Plugin_Handled;
-	}
-
-	PrintScrollStats(client, gI_SumRegisteredScrollsSession[client], gI_SumFastScrollsSession[client], 
-		gI_SumSlowScrollsSession[client], gI_TimingTotalSession[client], gI_TimingSamplesSession[client]);
-	PrintCheckConsole(client);
-	return Plugin_Handled;
-}
-
-
-Action CommandRunScrollStats(int client, int argc)
-{
-	if (!gB_Loaded[client])
-	{
-		return Plugin_Handled;
-	}
-
-	PrintScrollStats(client, gI_SumRegisteredScrollsRun[client], gI_SumFastScrollsRun[client], 
-		gI_SumSlowScrollsRun[client], gI_TimingTotalRun[client], gI_TimingSamplesRun[client]);
-	PrintCheckConsole(client);
-	return Plugin_Handled;
-}
-
-Action CommandSegmentScrollStats(int client, int argc)
-{
-	if (!gB_Loaded[client])
-	{
-		return Plugin_Handled;
-	}
-
-	PrintScrollStats(client, gI_SumRegisteredScrollsSegment[client], gI_SumFastScrollsSegment[client], 
-		gI_SumSlowScrollsSegment[client], gI_TimingTotalSegment[client], gI_TimingSamplesSegment[client]);
-	PrintCheckConsole(client);
-	return Plugin_Handled;
-}
-
-Action CommandChatScrollStats(int client, int argc)
-{
-	gB_ChatScrollStats[client] = !gB_ChatScrollStats[client];
-	if (gB_ChatScrollStats[client])
-	{
-		PrintToChat(client, "%s\8Chat scroll stats enabled. Check console for more information.", PREFIX);
-
-		PrintToConsole(client, "*0 Scrolls (*1) | *2 / *3 Speed | *4 Time | *5 Ground");
-		PrintToConsole(client, "=====================================================");
-		PrintToConsole(client, "*0 = How many fresh +jump commands were registered during the scroll");
-		PrintToConsole(client, "*1 = The effectiveness of the scroll speed (3 jump commands like so +-+-+- is 100%%)");
-		PrintToConsole(client, "*2 = Ticks wasted on slow scrolling (-jump twice or more in a row)");
-		PrintToConsole(client, "*3 = Ticks wasted on fast scrolling (+jump twice or more in a row)");
-		PrintToConsole(client, "*4 = The timing in ticks of the bhop related to scroll 'middle' (negative means early, positive means late)");
-		PrintToConsole(client, "*5 = Amount of ticks spent on the ground");
-	}
-	else
-	{
-		PrintToChat(client, "%s\8Chat scroll stats disabled.", PREFIX);
-	}
-	return Plugin_Handled;
-}
-
-Action CommandPostRunStats(int client, int argc)
-{
-	gB_PostRunStats[client] = !gB_PostRunStats[client];
-	if (gB_PostRunStats[client])
-	{
-		PrintToChat(client, "%s\8Post-run stats enabled. Check console at the end of the run for bhop stats.", PREFIX);
-	}
-	else
-	{
-		PrintToChat(client, "%s\8Post-run stats disabled.", PREFIX);
-	}
-	if (AreClientCookiesCached(client))
-	{
-		char buffer[2];
-		IntToString(gB_PostRunStats[client], buffer, sizeof(buffer));	
-		SetClientCookie(client, gH_MoreStatsCookie, buffer);
-	}
-	return Plugin_Handled;
-}
-
-Action CommandSegmentReset(int client, int argc)
-{
-	FillArray(gI_BhopTicksSegment[client], sizeof(gI_BhopTicksSegment[]), 0);
-	FillArray(gI_PerfStreaksSegment[client], sizeof(gI_PerfStreaksSegment[]), 0);	
-	gI_SumRegisteredScrollsSegment[client] = 0;
-	gI_SumFastScrollsSegment[client] = 0;
-	gI_SumSlowScrollsSegment[client] = 0;
-	gI_TimingTotalSegment[client] = 0;
-	gI_TimingSamplesSegment[client] = 0;
-	PrintToChat(client, "%s\8Segment stats have been reset.", PREFIX);
-}
-
-Action CommandSegmentPause(int client, int argc)
-{
-	gB_SegmentPaused[client] = !gB_SegmentPaused[client];
-	if (gB_SegmentPaused[client])
-	{
-		PrintToChat(client, "%s\8Segment stats paused.", PREFIX);
-	}
-	else
-	{
-		PrintToChat(client, "%s\8Segment stats resumed.", PREFIX);
-	}
-	return Plugin_Handled;
-}
-
-
-// ===== [ DATABASE ] =====
-
-void SetupDatabase()
-{
-	char error[512];
-	gH_DB = SQL_Connect("more-stats", true, error, sizeof(error));
-	if (gH_DB == null)
-	{
-		SetFailState("Database connection failed. Error: \"%s\".", error);
-	}
-
-	Transaction txn = new Transaction();
-
-	// Setup tables
-	txn.AddQuery("CREATE TABLE IF NOT EXISTS MoreStats (" ...
-    	"SteamID32 INTEGER NOT NULL, " ...
-    	"StatType1 INTEGER NOT NULL, " ...
-    	"StatType2 INTEGER NOT NULL, " ...
-    	"StatCount INTEGER NOT NULL, " ...
-    	"PRIMARY KEY(SteamID32, StatType1, StatType2))");
-
-	gH_DB.Execute(txn, _, SQLTxnFailure_LogError, _, DBPrio_High);
-}
-
-void LoadClientStats(int client)
-{
-	int userid = GetClientUserId(client);
-	int steamid = GetSteamAccountID(client);
-	if (steamid == 0)
-	{
-		return;
-	}
-
-	char query[256];
-	Transaction txn = new Transaction();
-
-	FormatEx(query, sizeof(query), 
-		"SELECT StatType1, StatType2, StatCount " ...
-		"FROM MoreStats " ...
-		"WHERE SteamID32 = %d", steamid);
-	txn.AddQuery(query);
-
-	gH_DB.Execute(txn, SQLTxnSuccess_LoadClientStats, SQLTxnFailure_LogError, userid, DBPrio_Normal);
-}
-
-void SaveClientStats(int client)
-{
-	int steamid = GetSteamAccountID(client);
-	if (steamid == 0 || !gB_Loaded[client])
-	{
-		return;
-	}
-
-	char query[2048];
-	char buffer[128];
-	Transaction txn = new Transaction();
-
-	FormatEx(query, sizeof(query), "DELETE FROM MoreStats WHERE SteamID32 = %d", steamid);
-	txn.AddQuery(query);
-
-	FormatEx(query, sizeof(query), "INSERT INTO MoreStats (SteamID32, StatType1, StatType2, StatCount) VALUES ");
-
-	for (int i = 0; i < MAX_BHOP_TICKS; i++)
-	{
-		FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d),", steamid, StatType_BhopStats, i, gI_BhopTicks[client][i]);
-		StrCat(query, sizeof(query), buffer);
-	}
-
-	for (int i = 0; i < MAX_PERF_STREAK; i++)
-	{
-		FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d),", steamid, StatType_PerfStreaks, i, gI_PerfStreaks[client][i]);
-		StrCat(query, sizeof(query), buffer);
-	}
-
-	FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d),", steamid, StatType_ScrollEff, ScrollEff_RegisteredScrolls, gI_SumRegisteredScrolls[client]);
-	StrCat(query, sizeof(query), buffer);
-	FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d),", steamid, StatType_ScrollEff, ScrollEff_FastScrolls, gI_SumFastScrolls[client]);
-	StrCat(query, sizeof(query), buffer);
-	FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d),", steamid, StatType_ScrollEff, ScrollEff_SlowScrolls, gI_SumSlowScrolls[client]);
-	StrCat(query, sizeof(query), buffer);
-	FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d),", steamid, StatType_ScrollEff, ScrollEff_TimingTotal, gI_TimingTotal[client]);
-	StrCat(query, sizeof(query), buffer);
-	// This format has no comma!!!
-	FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d)", steamid, StatType_ScrollEff, ScrollEff_TimingSamples, gI_TimingSamples[client]);
-	StrCat(query, sizeof(query), buffer);
-
-	//query[strlen(query) - 1] = 0; // Remove last comma...
-	txn.AddQuery(query);
-
-	gH_DB.Execute(txn, _, SQLTxnFailure_LogError, _, DBPrio_Normal);
-}
-
-void SQLTxnFailure_LogError(Database db, any unused, int numQueries, const char[] error, int failIndex, any[] queryData)
-{
-	LogError("[MoreStats] %s", error);
-}
-
-void SQLTxnSuccess_LoadClientStats(Database db, int userid, int numQueries, DBResultSet[] results, any[] queryData)
-{
-	int client = GetClientOfUserId(userid);
-	if (client == 0)
-	{
-		return;
-	}
-
-	while (results[0].FetchRow())
-	{
-		int type1 = results[0].FetchInt(0);
-		int type2 = results[0].FetchInt(1);
-		int count = results[0].FetchInt(2);
-
-		switch (type1)
-		{
-			case StatType_BhopStats:
-			{
-				if (type2 >= 0 && type2 < MAX_BHOP_TICKS)
-				{
-					gI_BhopTicks[client][type2] = count;
-				}
-			}
-			case StatType_PerfStreaks:
-			{
-				if (type2 >= 0 && type2 < MAX_PERF_STREAK)
-				{
-					gI_PerfStreaks[client][type2] = count;
-				}
-			}
-			case StatType_ScrollEff:
-			{
-				if (type2 == ScrollEff_RegisteredScrolls)
-				{
-					gI_SumRegisteredScrolls[client] = count;
-				}
-				else if (type2 == ScrollEff_FastScrolls)
-				{
-					gI_SumFastScrolls[client] = count;
-				}
-				else if (type2 == ScrollEff_SlowScrolls)
-				{
-					gI_SumSlowScrolls[client] = count;
-				}
-				else if (type2 == ScrollEff_TimingTotal)
-				{
-					gI_TimingTotal[client] = count;
-				}
-				else if (type2 == ScrollEff_TimingSamples)
-				{
-					gI_TimingSamples[client] = count;
-				}
-			}
-		}
-	}
-
-	gB_Loaded[client] = true;
+	InitializeBhopStats(client);
+	InitializeResetStats(client);
+	InitializeAirStats(client);
 }
