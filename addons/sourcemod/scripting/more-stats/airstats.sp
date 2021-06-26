@@ -31,6 +31,7 @@ void OnPlayerRunCmdPost_AirStats(int client, int buttons, const float vel[3], co
 	}
 	else
 	{
+		gI_StrafeDirection[client] = StrafeDirection_None;
 		if (gB_ChatAirStats[client] && gI_AirTime[client][GOKZ_GetCoreOption(client, Option_Mode)][Scope_InAir] != 0)
 		{
 			PrintChatAirStats(client);
