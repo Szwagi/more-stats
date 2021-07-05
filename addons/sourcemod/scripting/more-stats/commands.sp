@@ -417,7 +417,8 @@ Action CommandCompletionCount(int client, int argc)
 	}
 	int completions = GetCompletionCount(client, course, mode, scope);
 	int resets = GetResetCount(client, course, mode, scope);
-	PrintToChat(client, "%sCompletion count: \6%i \8/ \6%i \8| \6%.2f\8%%", PREFIX, completions, resets, float(completions) / resets * 100);
+	float percent = resets == 0 ? 0.0 : float(completions) / resets * 100;
+	PrintToChat(client, "%sCompletion count: \6%i \8/ \6%i \8| \6%.2f\8%%", PREFIX, completions, resets, percent);
 	return Plugin_Handled;
 }
 
@@ -466,7 +467,8 @@ Action CommandProCompletionCount(int client, int argc)
 	}
 	int completions = GetCompletionCount(client, course, mode, scope, true);
 	int resets = GetResetCount(client, course, mode, scope);
-	PrintToChat(client, "%sCompletion count: \4%i \8/ \4%i \8|\4%5.2f\8%%", PREFIX, completions, resets, float(completions) / resets * 100);
+	float percent = resets == 0 ? 0.0 : float(completions) / resets * 100;
+	PrintToChat(client, "%sCompletion count: \4%i \8/ \4%i \8|\4%5.2f\8%%", PREFIX, completions, resets, percent);
 	return Plugin_Handled;
 }
 
