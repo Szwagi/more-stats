@@ -133,7 +133,7 @@ void OnPlayerRunCmd_BhopStats(int client, int &buttons, int &cmdnum, int &tickco
 
 void Movement_OnStopTouchGround_BhopStats(int client, bool jumped)
 {
-	if (GOKZ_GetHitPerf(client) && jumped)
+	if (GOKZ_GetHitPerf(client) && jumped && !gCV_sv_autobunnyhopping.BoolValue)
 	{
 		IncrementVariable(client, gI_GOKZPerfCount[client][GOKZ_GetCoreOption(client, Option_Mode)]);
 	}
