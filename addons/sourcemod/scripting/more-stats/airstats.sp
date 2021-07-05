@@ -31,18 +31,20 @@ void OnPlayerRunCmdPost_AirStats(int client, int buttons, const float vel[3], co
 	}
 	else
 	{
+		int mode = GOKZ_GetCoreOption(client, Option_Mode);
+
 		gI_StrafeDirection[client] = StrafeDirection_None;
-		if (gB_ChatAirStats[client] && gI_AirTime[client][GOKZ_GetCoreOption(client, Option_Mode)][Scope_InAir] != 0)
+		if (gB_ChatAirStats[client] && gI_AirTime[client][mode][Scope_InAir] != 0)
 		{
 			PrintChatAirStats(client);
 		}
-		gI_AirTime[client][GOKZ_GetCoreOption(client, Option_Mode)][Scope_InAir] = 0;
-		gI_Strafes[client][GOKZ_GetCoreOption(client, Option_Mode)][Scope_InAir] = 0;
-		gI_Overlap[client][GOKZ_GetCoreOption(client, Option_Mode)][Scope_InAir] = 0;
-		gI_DeadAir[client][GOKZ_GetCoreOption(client, Option_Mode)][Scope_InAir] = 0;
-		gI_BadAngles[client][GOKZ_GetCoreOption(client, Option_Mode)][Scope_InAir] = 0;
-		gI_AirAccelTime[client][GOKZ_GetCoreOption(client, Option_Mode)][Scope_InAir] = 0;
-		gI_AirVelChangeTime[client][GOKZ_GetCoreOption(client, Option_Mode)][Scope_InAir] = 0;
+		gI_AirTime[client][mode][Scope_InAir] = 0;
+		gI_Strafes[client][mode][Scope_InAir] = 0;
+		gI_Overlap[client][mode][Scope_InAir] = 0;
+		gI_DeadAir[client][mode][Scope_InAir] = 0;
+		gI_BadAngles[client][mode][Scope_InAir] = 0;
+		gI_AirAccelTime[client][mode][Scope_InAir] = 0;
+		gI_AirVelChangeTime[client][mode][Scope_InAir] = 0;
 	}
 
 	Movement_GetVelocity(client, gF_OldVelocity[client]);
@@ -71,7 +73,9 @@ void CalculateSync2(int client)
 }
 void CalculateSync3(int client, int buttons, const float vel[3], const float angles[3])
 {
+	int mode = GOKZ_GetCoreOption(client, Option_Mode);
 	// Mirrored from the SDK, but we don't care how much the acceleration value is, we only care if there is any acceleration (or deceleration) at all.
+	
 	float wishvel[3];
 	float fmove, smove;
 	float fwrd[3];
@@ -107,7 +111,7 @@ void CalculateSync3(int client, int buttons, const float vel[3], const float ang
 	float addspeed = wishspeed - currentspeed;
 	if (addspeed > 0) 
 	{
-		IncrementVariable(client, gI_AirVelChangeTime[client][GOKZ_GetCoreOption(client, Option_Mode)], true);
+		IncrementVariable(client, gI_AirVelChangeTime[client][mode], true);
 	}
 	else
 	{
@@ -115,7 +119,7 @@ void CalculateSync3(int client, int buttons, const float vel[3], const float ang
 		{
 			// There is acceleration applied, but due to bad angles it has no effect.
 			// Example: late W release causes acceleration direction to be incorrect.
-			IncrementVariable(client, gI_BadAngles[client][GOKZ_GetCoreOption(client, Option_Mode)], true);
+			IncrementVariable(client, gI_BadAngles[client][mode], true);
 		}
 		else
 		{
@@ -123,12 +127,12 @@ void CalculateSync3(int client, int buttons, const float vel[3], const float ang
 			{
 				// The player is pressing at least one strafe key
 				// But since their acceleration value is 0, it must be overlapping with another key.
-				IncrementVariable(client, gI_Overlap[client][GOKZ_GetCoreOption(client, Option_Mode)], true);
+				IncrementVariable(client, gI_Overlap[client][mode], true);
 			}
 			else
 			{
 				// No movement key, dead air
-				IncrementVariable(client, gI_DeadAir[client][GOKZ_GetCoreOption(client, Option_Mode)], true);
+				IncrementVariable(client, gI_DeadAir[client][mode], true);
 			}
 		}
 	}
@@ -136,33 +140,34 @@ void CalculateSync3(int client, int buttons, const float vel[3], const float ang
 
 void UpdateStrafes(client)
 {
+	int mode = GOKZ_GetCoreOption(client, Option_Mode);
 	if (Movement_GetTurningLeft(client) && gI_StrafeDirection[client] != StrafeDirection_Left)
 	{
 		gI_StrafeDirection[client] = StrafeDirection_Left;
-		IncrementVariable(client, gI_Strafes[client][GOKZ_GetCoreOption(client, Option_Mode)], true);
+		IncrementVariable(client, gI_Strafes[client][mode], true);
 	}
 	else if (Movement_GetTurningRight(client) && gI_StrafeDirection[client] != StrafeDirection_Right)
 	{
 		gI_StrafeDirection[client] = StrafeDirection_Right;
-		IncrementVariable(client, gI_Strafes[client][GOKZ_GetCoreOption(client, Option_Mode)], true);
+		IncrementVariable(client, gI_Strafes[client][mode], true);
 	}
 }
 
 void PrintChatAirStats(int client)
 {
-	
-	float sync2 = gI_AirTime[client][GOKZ_GetCoreOption(client, Option_Mode)][Scope_InAir] == 0 ? 0.0 : float(gI_AirAccelTime[client][GOKZ_GetCoreOption(client, Option_Mode)][Scope_InAir]) / gI_AirTime[client][GOKZ_GetCoreOption(client, Option_Mode)][Scope_InAir] * 100;	
-	float sync3 = gI_AirTime[client][GOKZ_GetCoreOption(client, Option_Mode)][Scope_InAir] == 0 ? 0.0 : float(gI_AirVelChangeTime[client][GOKZ_GetCoreOption(client, Option_Mode)][Scope_InAir]) / gI_AirTime[client][GOKZ_GetCoreOption(client, Option_Mode)][Scope_InAir] * 100;
+	int mode = GOKZ_GetCoreOption(client, Option_Mode);
+	float sync2 = gI_AirTime[client][mode][Scope_InAir] == 0 ? 0.0 : float(gI_AirAccelTime[client][mode][Scope_InAir]) / gI_AirTime[client][mode][Scope_InAir] * 100;	
+	float sync3 = gI_AirTime[client][mode][Scope_InAir] == 0 ? 0.0 : float(gI_AirVelChangeTime[client][mode][Scope_InAir]) / gI_AirTime[client][mode][Scope_InAir] * 100;
 
 	PrintToChat(client, "%s\6%i \8Strafes | Sync: \6%.2f\8%% / \6%.2f\8%% | Air: \6%i \8| OL: \6%i \8| DA: \6%i \8| BA: \6%i",
 		PREFIX,
-		gI_Strafes[client][GOKZ_GetCoreOption(client, Option_Mode)][Scope_InAir],
+		gI_Strafes[client][mode][Scope_InAir],
 		sync2,
 		sync3,
-		gI_AirTime[client][GOKZ_GetCoreOption(client, Option_Mode)][Scope_InAir],
-		gI_Overlap[client][GOKZ_GetCoreOption(client, Option_Mode)][Scope_InAir],
-		gI_DeadAir[client][GOKZ_GetCoreOption(client, Option_Mode)][Scope_InAir],
-		gI_BadAngles[client][GOKZ_GetCoreOption(client, Option_Mode)][Scope_InAir]);
+		gI_AirTime[client][mode][Scope_InAir],
+		gI_Overlap[client][mode][Scope_InAir],
+		gI_DeadAir[client][mode][Scope_InAir],
+		gI_BadAngles[client][mode][Scope_InAir]);
 }
 
 void PrintAirStats(int client, int mode, int scope)

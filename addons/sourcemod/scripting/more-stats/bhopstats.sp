@@ -119,11 +119,13 @@ void OnPlayerRunCmd_BhopStats(int client, int &buttons, int &cmdnum, int &tickco
 						timingOffset >= 0 ? "+" : "", timingOffset,
 						groundTicks);
 				}
-				AddToVariable(client, gI_SumRegisteredScrolls[client][GOKZ_GetCoreOption(client, Option_Mode)], registeredScrolls);
-				AddToVariable(client, gI_SumFastScrolls[client][GOKZ_GetCoreOption(client, Option_Mode)], fastScrolls);
-				AddToVariable(client, gI_SumSlowScrolls[client][GOKZ_GetCoreOption(client, Option_Mode)], slowScrolls);
-				AddToVariable(client, gI_TimingTotal[client][GOKZ_GetCoreOption(client, Option_Mode)], timingOffset);
-				IncrementVariable(client, gI_TimingSamples[client][GOKZ_GetCoreOption(client, Option_Mode)]);
+
+				int mode = GOKZ_GetCoreOption(client, Option_Mode);
+				AddToVariable(client, gI_SumRegisteredScrolls[client][mode], registeredScrolls);
+				AddToVariable(client, gI_SumFastScrolls[client][mode], fastScrolls);
+				AddToVariable(client, gI_SumSlowScrolls[client][mode], slowScrolls);
+				AddToVariable(client, gI_TimingTotal[client][mode], timingOffset);
+				IncrementVariable(client, gI_TimingSamples[client][mode]);
 			}
 		}
 	}
@@ -168,30 +170,31 @@ void EndPerfStreak(int client, int scope = 0)
 	{
 		return;
 	}
+	int mode = GOKZ_GetCoreOption(client, Option_Mode);
 	int streak;
 	if (scope)
 	{
-		streak = gI_CurrentPerfStreak[client][GOKZ_GetCoreOption(client, Option_Mode)][scope];
+		streak = gI_CurrentPerfStreak[client][mode][scope];
 		if (streak > 0 && streak <= MAX_PERF_STREAK)
 		{
 			int index = streak - 1;
-			gI_PerfStreaks[client][GOKZ_GetCoreOption(client, Option_Mode)][index][scope]++;
+			gI_PerfStreaks[client][mode][index][scope]++;
 		}
-		gI_CurrentPerfStreak[client][GOKZ_GetCoreOption(client, Option_Mode)][scope] = 0;
+		gI_CurrentPerfStreak[client][mode][scope] = 0;
 		
 	}
 	else
 	{
 		for (scope = 0; scope < BHOPSTATS_MAXSCOPE; scope++)
 		{
-			streak = gI_CurrentPerfStreak[client][GOKZ_GetCoreOption(client, Option_Mode)][scope];
+			streak = gI_CurrentPerfStreak[client][mode][scope];
 			if (streak > 0 && streak <= MAX_PERF_STREAK)
 			{
 				int index = streak - 1;
-				gI_PerfStreaks[client][GOKZ_GetCoreOption(client, Option_Mode)][index][scope]++;
+				gI_PerfStreaks[client][mode][index][scope]++;
 			}
 		}
-		ResetVariable(gI_CurrentPerfStreak[client][GOKZ_GetCoreOption(client, Option_Mode)], sizeof(gI_CurrentPerfStreak[][]));
+		ResetVariable(gI_CurrentPerfStreak[client][mode], sizeof(gI_CurrentPerfStreak[][]));
 	}
 }
 
@@ -272,15 +275,16 @@ void PrintScrollStats(int client, int registeredScrolls, int fastScrolls, int sl
 void GOKZ_OnTimerEnd_Post_BhopStats(int client)
 {
 	EndPerfStreak(client, Scope_Run);
-	PrintBhopStats(client, gI_BhopTicks[client][GOKZ_GetCoreOption(client, Option_Mode)], sizeof(gI_BhopTicks[][]), GOKZ_GetCoreOption(client, Option_Mode), Scope_Run);
+	int mode = GOKZ_GetCoreOption(client, Option_Mode);
+	PrintBhopStats(client, gI_BhopTicks[client][mode], sizeof(gI_BhopTicks[][]), mode, Scope_Run);
 	PrintToConsole(client, "-----------------------");
-	PrintPerfStreaks(client, gI_PerfStreaks[client][GOKZ_GetCoreOption(client, Option_Mode)], sizeof(gI_PerfStreaks[][]), Scope_Run);
+	PrintPerfStreaks(client, gI_PerfStreaks[client][mode], sizeof(gI_PerfStreaks[][]), Scope_Run);
 	PrintToConsole(client, "-----------------------");
-	PrintScrollStats(client, gI_SumRegisteredScrolls[client][GOKZ_GetCoreOption(client, Option_Mode)][Scope_Run], 
-		gI_SumFastScrolls[client][GOKZ_GetCoreOption(client, Option_Mode)][Scope_Run],
-		gI_SumSlowScrolls[client][GOKZ_GetCoreOption(client, Option_Mode)][Scope_Run], 
-		gI_TimingTotal[client][GOKZ_GetCoreOption(client, Option_Mode)][Scope_Run], 
-		gI_TimingSamples[client][GOKZ_GetCoreOption(client, Option_Mode)][Scope_Run]);
+	PrintScrollStats(client, gI_SumRegisteredScrolls[client][mode][Scope_Run], 
+		gI_SumFastScrolls[client][mode][Scope_Run],
+		gI_SumSlowScrolls[client][mode][Scope_Run], 
+		gI_TimingTotal[client][mode][Scope_Run], 
+		gI_TimingSamples[client][mode][Scope_Run]);
 
 }
 
