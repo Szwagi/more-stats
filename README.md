@@ -5,7 +5,7 @@ KZTimer servers can only use this legacy version.
 
 If you are hosting a GOKZ server, use [this fork](https://github.com/zer0k-z/more-stats) by zer0.k!
 
-If updating to zer0.k fork, you can run these SQL queries to port your database:
+If you are updating to zer0.k fork, you can run these SQL queries to port your database:
 ```SQL
 INSERT INTO BhopStats (SteamID32, Mode, StatType1, StatType2, StatCount)
   SELECT olddb.SteamID32, 2, olddb.StatType1, olddb.StatType2, olddb.StatCount 
