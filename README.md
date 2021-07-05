@@ -1,3 +1,9 @@
+# LEGACY!!!
+This repository will not get any feature updates (big bugs will still get fixed).
+
+If you are hosting a GOKZ server, use [this fork](https://github.com/zer0k-z/more-stats) by zer0.k!
+KZTimer servers can only use this legacy version.
+
 # More Stats
 
 Plugin to display statistics about various KZ actions.
