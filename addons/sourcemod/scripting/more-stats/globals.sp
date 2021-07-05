@@ -1,4 +1,3 @@
-#define PREFIX " \4KZ \8| "
 public bool gB_LateLoaded;
 // BhopStats variables
 public Database gH_DB;

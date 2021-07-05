@@ -64,5 +64,5 @@ stock void ResetVariable(int[] variable, int length)
 
 void PrintCheckConsole(int client)
 {
-	PrintToChat(client, "%sCheck console for results!", PREFIX);
+	GOKZ_PrintToChat(client, true, "Check console for results!");
 }

@@ -159,8 +159,7 @@ void PrintChatAirStats(int client)
 	float sync2 = gI_AirTime[client][mode][Scope_InAir] == 0 ? 0.0 : float(gI_AirAccelTime[client][mode][Scope_InAir]) / gI_AirTime[client][mode][Scope_InAir] * 100;	
 	float sync3 = gI_AirTime[client][mode][Scope_InAir] == 0 ? 0.0 : float(gI_AirVelChangeTime[client][mode][Scope_InAir]) / gI_AirTime[client][mode][Scope_InAir] * 100;
 
-	PrintToChat(client, "%s\6%i \8Strafes | Sync: \6%.2f\8%% / \6%.2f\8%% | Air: \6%i \8| OL: \6%i \8| DA: \6%i \8| BA: \6%i",
-		PREFIX,
+	GOKZ_PrintToChat(client, true, "{lime}%i {grey}Strafes | Sync: {lime}%.2f{grey}%%%% / {lime}%.2f{grey}%%%% | Air: {lime}%i {grey}| OL: {lime}%i {grey}| DA: {lime}%i {grey}| BA: {lime}%i",
 		gI_Strafes[client][mode][Scope_InAir],
 		sync2,
 		sync3,
@@ -173,21 +172,21 @@ void PrintChatAirStats(int client)
 void PrintAirStats(int client, int mode, int scope)
 {
 	PrintToConsole(client, "-----------------------");
-	PrintToConsole(client, "Airstats (%i ticks)", gI_AirTime[client][mode][scope]);
+	PrintToConsole(client, "Airstats (%i ticks, %i strafes)", gI_AirTime[client][mode][scope], gI_Strafes[client][mode][scope]);
 	PrintToConsole(client, "-----------------------");
 
-	PrintToConsole(client, "Strafes: %i", gI_Strafes[client][mode][scope]);
-
 	float sync2 = gI_AirTime[client][mode][scope] == 0 ? 0.0 : float(gI_AirAccelTime[client][mode][scope]) / gI_AirTime[client][mode][scope] * 100;
-	PrintToConsole(client, "Sync2: %11i ticks (%.2f%%)", gI_AirAccelTime[client][mode][scope], sync2);
+	PrintToConsole(client, "Acceleration Sync: %11i ticks (%.2f%%)", gI_AirAccelTime[client][mode][scope], sync2);
 
 	float sync3 = gI_AirTime[client][mode][scope] == 0 ? 0.0 : float(gI_AirVelChangeTime[client][mode][scope]) / gI_AirTime[client][mode][scope] * 100;
-	PrintToConsole(client, "Sync3: %11i ticks (%.2f%%)", gI_AirVelChangeTime[client][mode][scope], sync3);
+	PrintToConsole(client, "Velocity Change Sync: %8i ticks (%.2f%%)", gI_AirVelChangeTime[client][mode][scope], sync3);
 
-	PrintToConsole(client, "OL: %i | DA: %i | BA: %i", 		
-		gI_Overlap[client][mode][scope],
-		gI_DeadAir[client][mode][scope],
-		gI_BadAngles[client][mode][scope]);
+	PrintToConsole(client, "Overlap: %21i ticks (%.2f%%)", gI_Overlap[client][mode][scope], 
+		gI_AirTime[client][mode][scope] == 0 ? 0.0 : float(gI_Overlap[client][mode][scope]) / gI_AirTime[client][mode][scope] * 100);
+	PrintToConsole(client, "Dead Airtime: %16i ticks (%.2f%%)",	gI_DeadAir[client][mode][scope],
+		gI_AirTime[client][mode][scope] == 0 ? 0.0 : float(gI_DeadAir[client][mode][scope]) / gI_AirTime[client][mode][scope] * 100);
+	PrintToConsole(client, "Bad Angles: %18i ticks (%.2f%%)", gI_BadAngles[client][mode][scope],
+		gI_AirTime[client][mode][scope] == 0 ? 0.0 : float(gI_BadAngles[client][mode][scope]) / gI_AirTime[client][mode][scope] * 100);
 }
 
 void GOKZ_OnTimerStart_Post_AirStats(int client)

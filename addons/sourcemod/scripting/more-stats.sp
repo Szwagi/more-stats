@@ -167,7 +167,6 @@ public void GOKZ_OnTimerEnd_Post(int client, int course, float time, int telepor
 	if (gB_PostRunStats[client])
 	{
 		PrintToConsole(client, "Player: %N, Course: %i, Time: %f, TPs: %i", client, course, time, teleportsUsed);
-		PrintToConsole(client, "-----------------------");
 		GOKZ_OnTimerEnd_Post_BhopStats(client);
 		GOKZ_OnTimerEnd_Post_AirStats(client);
 	}

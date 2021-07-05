@@ -112,8 +112,7 @@ void OnPlayerRunCmd_BhopStats(int client, int &buttons, int &cmdnum, int &tickco
 				{
 					float effectivenessPercent = GetScrollEffectivenessPercent(registeredScrolls, fastScrolls, slowScrolls);
 					int groundTicks = gI_ScrollGroundTicks[client];
-					PrintToChat(client, "%s\6%d \8Scrolls (\6%0.0f%%\8) | \6%d \8/ \6%d \8Speed | \6%s%d \8Time | \6%d \8Ground",
-						PREFIX,
+					GOKZ_PrintToChat(client, true, "{lime}%d {grey}Scrolls ({lime}%0.0f%%%%{grey}) | {lime}%d {grey}/ {lime}%d {grey}Speed | {lime}%s%d {grey}Time | {lime}%d {grey}Ground",
 						registeredScrolls, effectivenessPercent,
 						slowScrolls, fastScrolls,
 						timingOffset >= 0 ? "+" : "", timingOffset,
@@ -207,6 +206,7 @@ void PrintBhopStats(int client, const int[][] bhopTicks, int length, int mode, i
 		sum += bhopTicks[i][scope];
 	}
 	float percent = (gI_GOKZPerfCount[client][mode][scope] == 0) ? 0.0 : float(gI_GOKZPerfCount[client][mode][scope]) / sum * 100;
+	PrintToConsole(client, "-----------------------");
 	PrintToConsole(client, "Bhop Stats (%d bhops)", sum);
 	PrintToConsole(client, "-----------------------");
 	PrintToConsole(client, "Perfs: %7d | %.2f%%", gI_GOKZPerfCount[client][mode][scope], percent);
@@ -216,7 +216,7 @@ void PrintBhopStats(int client, const int[][] bhopTicks, int length, int mode, i
 		int tick = i + 1;
 		int count = bhopTicks[i][scope];
 		percent = (sum == 0) ? 0.0 : count / float(sum) * 100.0;
-		PrintToConsole(client, "Tick %d: %6d | %.2f%", tick, count, percent);
+		PrintToConsole(client, "Tick %d: %6d | %.2f%%", tick, count, percent);
 	}
 }
 
@@ -229,7 +229,7 @@ void PrintShortBhopStats(int client, const int[][][] bhopTicks, int length, int 
 	}
 	int count = gI_GOKZPerfCount[client][mode][scope];
 	float percent = (sum == 0) ? 0.0: count / float(sum) * 100.0;
-	PrintToChat(client, "%s\6%N\8: \6%.2f%% \8Perfs (%d/%d)", PREFIX, client, percent, count, sum);
+	GOKZ_PrintToChat(client, true, "{lime}%N{grey}: {lime}%.2f{grey}%%%% Perfs (%d/%d)", client, percent, count, sum);
 }
 
 void PrintPerfStreaks(int client, const int[][] perfStreaks, int length, int scope)

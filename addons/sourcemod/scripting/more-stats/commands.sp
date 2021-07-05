@@ -35,11 +35,11 @@ Action CommandPostRunStats(int client, int argc)
 	gB_PostRunStats[client] = !gB_PostRunStats[client];
 	if (gB_PostRunStats[client])
 	{
-		PrintToChat(client, "%s\8Post-run stats enabled. Check console at the end of the run for more statistics.", PREFIX);
+		GOKZ_PrintToChat(client, true, "{grey}Post-run stats enabled. Check console at the end of the run for more statistics.");
 	}
 	else
 	{
-		PrintToChat(client, "%s\8Post-run stats disabled.", PREFIX);
+		GOKZ_PrintToChat(client, true, "{grey}Post-run stats disabled.");
 	}
 	if (AreClientCookiesCached(client))
 	{
@@ -80,7 +80,7 @@ Action CommandSegmentReset(int client, int argc)
 		gI_AirAccelTime[client][mode][Scope_Segment] = 0;
 		gI_AirVelChangeTime[client][mode][Scope_Segment] = 0;
 	}
-	PrintToChat(client, "%s\8Segment stats have been reset.", PREFIX);
+	GOKZ_PrintToChat(client, true, "{grey}Segment stats have been reset.");
 }
 
 Action CommandSegmentPause(int client, int argc)
@@ -88,11 +88,11 @@ Action CommandSegmentPause(int client, int argc)
 	gB_SegmentPaused[client] = !gB_SegmentPaused[client];
 	if (gB_SegmentPaused[client])
 	{
-		PrintToChat(client, "%s\8Segment stats paused.", PREFIX);
+		GOKZ_PrintToChat(client, true, "{grey}Segment stats paused.");
 	}
 	else
 	{
-		PrintToChat(client, "%s\8Segment stats resumed.", PREFIX);
+		GOKZ_PrintToChat(client, true, "{grey}Segment stats resumed.");
 	}
 	return Plugin_Handled;
 }
@@ -304,7 +304,7 @@ Action CommandChatScrollStats(int client, int argc)
 	gB_ChatScrollStats[client] = !gB_ChatScrollStats[client];
 	if (gB_ChatScrollStats[client])
 	{
-		PrintToChat(client, "%s\8Chat scroll stats enabled. Check console for more information.", PREFIX);
+		GOKZ_PrintToChat(client, true, "{grey}Chat scroll stats enabled. Check console for more information.");
 
 		PrintToConsole(client, "*0 Scrolls (*1) | *2 / *3 Speed | *4 Time | *5 Ground");
 		PrintToConsole(client, "=====================================================");
@@ -317,7 +317,7 @@ Action CommandChatScrollStats(int client, int argc)
 	}
 	else
 	{
-		PrintToChat(client, "%s\8Chat scroll stats disabled.", PREFIX);
+		GOKZ_PrintToChat(client, true, "{grey}Chat scroll stats disabled.");
 	}
 	return Plugin_Handled;
 }
@@ -368,7 +368,7 @@ Action CommandResetCount(int client, int argc)
 		}
 	}
 
-	PrintToChat(client, "%sReset count: \6%i", PREFIX, GetResetCount(client, course, mode, scope))
+	GOKZ_PrintToChat(client, true, "Reset count: {lime}%i", GetResetCount(client, course, mode, scope))
 	return Plugin_Handled;
 }
 
@@ -418,7 +418,7 @@ Action CommandCompletionCount(int client, int argc)
 	int completions = GetCompletionCount(client, course, mode, scope);
 	int resets = GetResetCount(client, course, mode, scope);
 	float percent = resets == 0 ? 0.0 : float(completions) / resets * 100;
-	PrintToChat(client, "%sCompletion count: \6%i \8/ \6%i \8| \6%.2f\8%%", PREFIX, completions, resets, percent);
+	GOKZ_PrintToChat(client, true, "Completion count: {lime}%i {grey}/ {lime}%i {grey}| {lime}%.2f{grey}%%", completions, resets, percent);
 	return Plugin_Handled;
 }
 
@@ -468,7 +468,7 @@ Action CommandProCompletionCount(int client, int argc)
 	int completions = GetCompletionCount(client, course, mode, scope, true);
 	int resets = GetResetCount(client, course, mode, scope);
 	float percent = resets == 0 ? 0.0 : float(completions) / resets * 100;
-	PrintToChat(client, "%sCompletion count: \4%i \8/ \4%i \8|\4%5.2f\8%%", PREFIX, completions, resets, percent);
+	GOKZ_PrintToChat(client, true, "Completion count: {lime}%i {grey}/ {lime}%i {grey}|{lime}%5.2f{grey}%%", completions, resets, percent);
 	return Plugin_Handled;
 }
 
@@ -524,7 +524,7 @@ Action CommandChatAirStats(int client, int argc)
 	gB_ChatAirStats[client] = !gB_ChatAirStats[client];
 	if (gB_ChatAirStats[client])
 	{
-		PrintToChat(client, "%s\8Air scroll stats enabled. Check console for more information.", PREFIX);
+		GOKZ_PrintToChat(client, true, "{grey}Air scroll stats enabled. Check console for more information.");
 
 		PrintToConsole(client, "*0 Strafes | Sync: *1%% / *2%% | Air: *3 | OL: *4 | DA: *5 | BA: *6");
 		PrintToConsole(client, "=====================================================");
@@ -538,7 +538,7 @@ Action CommandChatAirStats(int client, int argc)
 	}
 	else
 	{
-		PrintToChat(client, "%s\8Chat air stats disabled.", PREFIX);
+		GOKZ_PrintToChat(client, true, "{grey}Chat air stats disabled.");
 	}
 	return Plugin_Handled;
 }
