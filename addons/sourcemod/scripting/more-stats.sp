@@ -22,7 +22,7 @@ public Plugin myinfo =
 	name = "More Stats",
 	author = "Szwagi, zer0.k",
 	description = "Tracks various KZ related statistics",
-	version = "v2.0.4",
+	version = "v2.0.5",
 	url = "https://github.com/zer0k-z/more-stats"
 };
 

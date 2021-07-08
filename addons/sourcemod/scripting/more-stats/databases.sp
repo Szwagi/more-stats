@@ -81,7 +81,7 @@ void LoadClientResetStats(int userid, int steamid)
 		"SELECT Course, Mode, ResetType, ResetCount " ...
 		"FROM ResetStats " ...
 		"WHERE SteamID32 = %d " ...
-		"AND Map = %d", steamid, map);
+		"AND Map = '%s'", steamid, map);
 	txn.AddQuery(query);
 	gH_DB.Execute(txn, SQLTxnSuccess_LoadClientResetStats, SQLTxnFailure_LogError, userid, DBPrio_Normal);
 }
@@ -168,7 +168,7 @@ void SaveClientResetStats(int client)
 
 	char map[32];
 	GetCurrentMapDisplayName(map, sizeof(map));
-	FormatEx(query, sizeof(query), "INSERT INTO ResetStats (SteamID32, Map, Course, ResetCount) VALUES ");
+	FormatEx(query, sizeof(query), "INSERT INTO ResetStats (SteamID32, Map, Course, Mode, ResetType, ResetCount) VALUES ");
 
 	for (int course = 0; course < GOKZ_MAX_COURSES - 1; course++)
 	{
@@ -176,23 +176,23 @@ void SaveClientResetStats(int client)
 		{
 			if (gI_ResetCount[client][course][mode][Scope_AllTime] > 0)
 			{
-				FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d,%d,%d),", steamid, map, course, mode, ResetType_ResetCount, gI_ResetCount[client][course][mode][Scope_AllTime]);
+				FormatEx(buffer, sizeof(buffer), "(%d,'%s',%d,%d,%d,%d),", steamid, map, course, mode, ResetType_ResetCount, gI_ResetCount[client][course][mode][Scope_AllTime]);
 				StrCat(query, sizeof(query), buffer);
 			}
 			if (gI_CompletionCount[client][course][mode][Scope_AllTime] > 0)
 			{
-				FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d,%d,%d),", steamid, map, course, mode, ResetType_CompletionCount, gI_CompletionCount[client][course][mode][Scope_AllTime]);
+				FormatEx(buffer, sizeof(buffer), "(%d,'%s',%d,%d,%d,%d),", steamid, map, course, mode, ResetType_CompletionCount, gI_CompletionCount[client][course][mode][Scope_AllTime]);
 				StrCat(query, sizeof(query), buffer);
 			}
 			if (gI_ProCompletionCount[client][course][mode][Scope_AllTime] > 0)
 			{
-				FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d,%d,%d),", steamid, map, course, mode, ResetType_ProCompletionCount, gI_ProCompletionCount[client][course][mode][Scope_AllTime]);
+				FormatEx(buffer, sizeof(buffer), "(%d,'%s',%d,%d,%d,%d),", steamid, map, course, mode, ResetType_ProCompletionCount, gI_ProCompletionCount[client][course][mode][Scope_AllTime]);
 				StrCat(query, sizeof(query), buffer);
 			}
 		}
 	}
 	query[strlen(query) - 1] = 0;
-
+	
 	gH_DB.Execute(txn, _, SQLTxnFailure_LogError, _, DBPrio_Normal);
 }
 

@@ -347,13 +347,13 @@ Action CommandResetCount(int client, int argc)
 	if (argc >= 2)
 	{
 		char buffer[32];
-		GetCmdArg(1, buffer, sizeof(buffer));
+		GetCmdArg(2, buffer, sizeof(buffer));
 		course = StringToInt(buffer);		
 	}
 	if (argc >= 3)
 	{
 		char buffer[10];
-		GetCmdArg(2, buffer, sizeof(buffer));
+		GetCmdArg(3, buffer, sizeof(buffer));
 		if (StrEqual(buffer, "kzt", false))
 		{
 			mode = Mode_KZTimer;
@@ -395,13 +395,13 @@ Action CommandCompletionCount(int client, int argc)
 	if (argc >= 2)
 	{
 		char buffer[32];
-		GetCmdArg(1, buffer, sizeof(buffer));
+		GetCmdArg(2, buffer, sizeof(buffer));
 		course = StringToInt(buffer);		
 	}
 	if (argc >= 3)
 	{
 		char buffer[10];
-		GetCmdArg(2, buffer, sizeof(buffer));
+		GetCmdArg(3, buffer, sizeof(buffer));
 		if (StrEqual(buffer, "kzt", false))
 		{
 			mode = Mode_KZTimer;
@@ -445,13 +445,13 @@ Action CommandProCompletionCount(int client, int argc)
 	if (argc >= 2)
 	{
 		char buffer[32];
-		GetCmdArg(1, buffer, sizeof(buffer));
+		GetCmdArg(2, buffer, sizeof(buffer));
 		course = StringToInt(buffer);		
 	}
 	if (argc >= 3)
 	{
 		char buffer[10];
-		GetCmdArg(2, buffer, sizeof(buffer));
+		GetCmdArg(3, buffer, sizeof(buffer));
 		if (StrEqual(buffer, "kzt", false))
 		{
 			mode = Mode_KZTimer;
