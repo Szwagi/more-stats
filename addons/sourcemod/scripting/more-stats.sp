@@ -22,7 +22,7 @@ public Plugin myinfo =
 	name = "More Stats",
 	author = "Szwagi, zer0.k",
 	description = "Tracks various KZ related statistics",
-	version = "v2.0.5",
+	version = "v2.0.6",
 	url = "https://github.com/zer0k-z/more-stats"
 };
 
@@ -140,10 +140,6 @@ public void Movement_OnPlayerJump(int client, bool jumpbug)
 	Movement_OnPlayerJump_BhopStats(client, jumpbug);
 }
 
-public void Movement_OnStopTouchGround(int client, bool jumped)
-{
-	Movement_OnStopTouchGround_BhopStats(client, jumped);
-}
 public Action GOKZ_OnTimerStart(int client, int course)
 {
 	GOKZ_OnTimerStart_ResetStats(client, course);

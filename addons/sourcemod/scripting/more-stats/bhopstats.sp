@@ -132,14 +132,6 @@ void OnPlayerRunCmd_BhopStats(int client, int &buttons, int &cmdnum, int &tickco
 	gI_LastButtons[client] = buttons;
 }
 
-void Movement_OnStopTouchGround_BhopStats(int client, bool jumped)
-{
-	if (GOKZ_GetHitPerf(client) && jumped && !gCV_sv_autobunnyhopping.BoolValue)
-	{
-		IncrementVariable(client, gI_GOKZPerfCount[client][GOKZ_GetCoreOption(client, Option_Mode)]);
-	}
-}
-
 float GetScrollEffectivenessPercent(int registeredScrolls, int fastScrolls, int slowScrolls)
 {
 	int badScrolls = fastScrolls + slowScrolls;
@@ -310,11 +302,7 @@ void Movement_OnPlayerJump_BhopStats(int client, int jumpbug)
 		EndPerfStreak(client);
 		return;
 	}
-
-	if (jumpbug)
-	{
-		IncrementVariable(client, gI_GOKZPerfCount[client][GOKZ_GetCoreOption(client, Option_Mode)]);
-	}
+	RequestFrame(CheckPerf, client);
 
 	int landingTick = Movement_GetLandingTick(client);
 	int groundTicks = gI_TickCount[client] - landingTick - 1;
@@ -343,6 +331,14 @@ void Movement_OnPlayerJump_BhopStats(int client, int jumpbug)
 	else
 	{
 		EndPerfStreak(client);
+	}
+}
+
+public void CheckPerf(int client)
+{
+	if (GOKZ_GetHitPerf(client) && !gCV_sv_autobunnyhopping.BoolValue)
+	{
+		IncrementVariable(client, gI_GOKZPerfCount[client][GOKZ_GetCoreOption(client, Option_Mode)]);
 	}
 }
 

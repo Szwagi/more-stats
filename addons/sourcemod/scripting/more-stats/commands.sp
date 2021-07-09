@@ -81,6 +81,7 @@ Action CommandSegmentReset(int client, int argc)
 		gI_AirVelChangeTime[client][mode][Scope_Segment] = 0;
 	}
 	GOKZ_PrintToChat(client, true, "{grey}Segment stats have been reset.");
+	return Plugin_Handled;
 }
 
 Action CommandSegmentPause(int client, int argc)
