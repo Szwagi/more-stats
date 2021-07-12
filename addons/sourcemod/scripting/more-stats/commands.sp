@@ -328,13 +328,12 @@ Action CommandResetCount(int client, int argc)
 {
 	int course = GOKZ_GetCourse(client);
 	int mode = GOKZ_GetCoreOption(client, Option_Mode);
-	int scope = Scope_AllTime;
-
-
+	int scope;
+	bool searchMap = false;
+	char buffer[128];
 	if (argc >= 1)
 	{
-		// Run scope doesn't mean anything here!
-		char buffer[10];
+		// Run scope doesn't mean anything here!		
 		GetCmdArg(1, buffer, sizeof(buffer));
 		if (StrEqual(buffer, "session", false))
 		{
@@ -344,16 +343,31 @@ Action CommandResetCount(int client, int argc)
 		{
 			scope = Scope_Segment;
 		}
+		else if (StrEqual(buffer, "all", false) || StrEqual(buffer, "overall", false) || StrEqual(buffer, "alltime", false))
+		{
+			scope = Scope_AllTime;
+		}
+		else
+		{
+			searchMap = true;
+		}
 	}
 	if (argc >= 2)
 	{
-		char buffer[32];
 		GetCmdArg(2, buffer, sizeof(buffer));
-		course = StringToInt(buffer);		
+		if (IsCharNumeric(buffer[0]))
+		{
+			course = StringToInt(buffer);
+		}
+		else
+		{
+			GOKZ_PrintToChat(client, true, "Invalid course number.");
+			return Plugin_Handled;
+		}
+		
 	}
 	if (argc >= 3)
 	{
-		char buffer[10];
 		GetCmdArg(3, buffer, sizeof(buffer));
 		if (StrEqual(buffer, "kzt", false))
 		{
@@ -367,9 +381,24 @@ Action CommandResetCount(int client, int argc)
 		{
 			mode = Mode_Vanilla;
 		}
+		else
+		{
+			GOKZ_PrintToChat(client, true, "Invalid gamemode.");
+			return Plugin_Handled;
+		}
 	}
-
-	GOKZ_PrintToChat(client, true, "Reset count: {lime}%i", GetResetCount(client, course, mode, scope))
+	if (searchMap)
+	{
+		int userid = GetClientUserId(client);
+		int steamid = GetSteamAccountID(client);
+		GetCmdArg(1, buffer, sizeof(buffer));
+		LoadClientResetStatsForMap(userid, steamid, buffer, course, mode, ResetType_ResetCount);
+	}
+	else
+	{
+		GOKZ_PrintToChat(client, true, "Reset count: {lime}%i", GetResetCount(client, course, mode, scope));
+	}
+	
 	return Plugin_Handled;
 }
 
@@ -377,12 +406,12 @@ Action CommandCompletionCount(int client, int argc)
 {
 	int course = GOKZ_GetCourse(client);
 	int mode = GOKZ_GetCoreOption(client, Option_Mode);
-	int scope = Scope_AllTime;	
-
+	int scope;
+	bool searchMap = false;
+	char buffer[128];
 	if (argc >= 1)
 	{
-		// Run scope doesn't mean anything here!
-		char buffer[10];
+		// Run scope doesn't mean anything here!		
 		GetCmdArg(1, buffer, sizeof(buffer));
 		if (StrEqual(buffer, "session", false))
 		{
@@ -392,16 +421,31 @@ Action CommandCompletionCount(int client, int argc)
 		{
 			scope = Scope_Segment;
 		}
+		else if (StrEqual(buffer, "all", false) || StrEqual(buffer, "overall", false) || StrEqual(buffer, "alltime", false))
+		{
+			scope = Scope_AllTime;
+		}
+		else
+		{
+			searchMap = true;
+		}
 	}
 	if (argc >= 2)
 	{
-		char buffer[32];
 		GetCmdArg(2, buffer, sizeof(buffer));
-		course = StringToInt(buffer);		
+		if (IsCharNumeric(buffer[0]))
+		{
+			course = StringToInt(buffer);
+		}
+		else
+		{
+			GOKZ_PrintToChat(client, true, "Invalid course number.");
+			return Plugin_Handled;
+		}
+		
 	}
 	if (argc >= 3)
 	{
-		char buffer[10];
 		GetCmdArg(3, buffer, sizeof(buffer));
 		if (StrEqual(buffer, "kzt", false))
 		{
@@ -415,11 +459,26 @@ Action CommandCompletionCount(int client, int argc)
 		{
 			mode = Mode_Vanilla;
 		}
+		else
+		{
+			GOKZ_PrintToChat(client, true, "Invalid gamemode.");
+			return Plugin_Handled;
+		}
 	}
-	int completions = GetCompletionCount(client, course, mode, scope);
-	int resets = GetResetCount(client, course, mode, scope);
-	float percent = resets == 0 ? 0.0 : float(completions) / resets * 100;
-	GOKZ_PrintToChat(client, true, "Completion count: {lime}%i {grey}/ {lime}%i {grey}| {lime}%.2f{grey}%%", completions, resets, percent);
+	if (searchMap)
+	{
+		int userid = GetClientUserId(client);
+		int steamid = GetSteamAccountID(client);
+		GetCmdArg(1, buffer, sizeof(buffer));
+		LoadClientResetStatsForMap(userid, steamid, buffer, course, mode, ResetType_CompletionCount);
+	}
+	else
+	{
+		int completions = GetCompletionCount(client, course, mode, scope);
+		int resets = GetResetCount(client, course, mode, scope);
+		float percent = resets == 0 ? 0.0 : float(completions) / resets * 100;
+		GOKZ_PrintToChat(client, true, "Completion count: {lime}%i {grey}/ {lime}%i {grey}| {lime}%.2f{grey}%%", completions, resets, percent);
+	}
 	return Plugin_Handled;
 }
 
@@ -427,12 +486,12 @@ Action CommandProCompletionCount(int client, int argc)
 {
 	int course = GOKZ_GetCourse(client);
 	int mode = GOKZ_GetCoreOption(client, Option_Mode);
-	int scope = Scope_AllTime;	
-
+	int scope;
+	bool searchMap = false;
+	char buffer[128];
 	if (argc >= 1)
 	{
-		// Run scope doesn't mean anything here!
-		char buffer[10];
+		// Run scope doesn't mean anything here!		
 		GetCmdArg(1, buffer, sizeof(buffer));
 		if (StrEqual(buffer, "session", false))
 		{
@@ -442,16 +501,31 @@ Action CommandProCompletionCount(int client, int argc)
 		{
 			scope = Scope_Segment;
 		}
+		else if (StrEqual(buffer, "all", false) || StrEqual(buffer, "overall", false) || StrEqual(buffer, "alltime", false))
+		{
+			scope = Scope_AllTime;
+		}
+		else
+		{
+			searchMap = true;
+		}
 	}
 	if (argc >= 2)
 	{
-		char buffer[32];
 		GetCmdArg(2, buffer, sizeof(buffer));
-		course = StringToInt(buffer);		
+		if (IsCharNumeric(buffer[0]))
+		{
+			course = StringToInt(buffer);
+		}
+		else
+		{
+			GOKZ_PrintToChat(client, true, "Invalid course number.");
+			return Plugin_Handled;
+		}
+		
 	}
 	if (argc >= 3)
 	{
-		char buffer[10];
 		GetCmdArg(3, buffer, sizeof(buffer));
 		if (StrEqual(buffer, "kzt", false))
 		{
@@ -465,11 +539,26 @@ Action CommandProCompletionCount(int client, int argc)
 		{
 			mode = Mode_Vanilla;
 		}
+		else
+		{
+			GOKZ_PrintToChat(client, true, "Invalid gamemode.");
+			return Plugin_Handled;
+		}
 	}
-	int completions = GetCompletionCount(client, course, mode, scope, true);
-	int resets = GetResetCount(client, course, mode, scope);
-	float percent = resets == 0 ? 0.0 : float(completions) / resets * 100;
-	GOKZ_PrintToChat(client, true, "Completion count: {lime}%i {grey}/ {lime}%i {grey}|{lime}%5.2f{grey}%%", completions, resets, percent);
+	if (searchMap)
+	{
+		int userid = GetClientUserId(client);
+		int steamid = GetSteamAccountID(client);
+		GetCmdArg(1, buffer, sizeof(buffer));
+		LoadClientResetStatsForMap(userid, steamid, buffer, course, mode, ResetType_ProCompletionCount);
+	}
+	else
+	{
+		int completions = GetCompletionCount(client, course, mode, scope, true);
+		int resets = GetResetCount(client, course, mode, scope);
+		float percent = resets == 0 ? 0.0 : float(completions) / resets * 100;
+		GOKZ_PrintToChat(client, true, "Pro completion count: {lime}%i {grey}/ {lime}%i {grey}| {lime}%.2f{grey}%%", completions, resets, percent);
+	}
 	return Plugin_Handled;
 }
 

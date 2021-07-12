@@ -13,11 +13,11 @@ Plugin to display statistics about various KZ actions. Read [this](https://githu
 
 - `!airstats <scope> <mode>` - Display airstrafe statistics
 
-- `!resetcount` / `!rcount <scope> <course> <mode>` - Display reset count
+- `!resetcount` / `!rcount <scope/map> <course> <mode>` - Display reset count
 
-- `!completioncount` / `!ccount <scope> <course> <mode>` - Display reset and completion count
+- `!completioncount` / `!ccount <scope/map> <course> <mode>` - Display reset and completion count
 
-- `!procompletioncount` / `!pccount <scope> <course> <mode>` - Display reset and pro completion count
+- `!procompletioncount` / `!pccount <scope/map> <course> <mode>` - Display reset and pro completion count
 
 #
 
@@ -34,9 +34,12 @@ Plugin to display statistics about various KZ actions. Read [this](https://githu
 
 - `!postrunstats` - Display all statistics at the end of the run (GOKZ)
 #
-- Possible scopes: ``all`` (default) / ``session`` / ``run`` (not available for reset stats) / ``segment``.
+
+- Possible scopes: ``all/alltime/overall`` (default) / ``session`` / ``run`` (not available for reset stats) / ``segment``. For reset statistics, you can search for map using the first argument.
 
 - Possible modes: ``kzt`` / ``skz`` / ``vnl``. Default is player's current mode.
+
+- Possible courses: From 0 to 100. 0 is main course, 1 to 100 is bonuses. Default is player's current course.
 
 ### Dependencies
 - [MovementAPI](https://github.com/danzayau/MovementAPI)

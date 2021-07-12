@@ -86,6 +86,36 @@ void LoadClientResetStats(int userid, int steamid)
 	gH_DB.Execute(txn, SQLTxnSuccess_LoadClientResetStats, SQLTxnFailure_LogError, userid, DBPrio_Normal);
 }
 
+void LoadClientResetStatsForMap(int userid, int steamid, char[] map, int course, int mode, int resetType)
+{
+	char query[256];
+	Transaction txn = new Transaction();
+
+	FormatEx(query, sizeof(query),
+		"SELECT ResetCount, ResetType, Map " ...
+		"FROM ResetStats " ...
+		"WHERE SteamID32 = %d " ...
+		"AND Course = %d " ...
+		"AND Mode = %d " ...
+		"AND Map LIKE '%%%s%%' "...
+		"ORDER BY (Map='%s') DESC, LENGTH(Map) " ...
+    	"LIMIT 1", steamid, course, mode, map, map);
+
+	txn.AddQuery(query);
+	if (resetType == ResetType_ResetCount)
+	{
+		gH_DB.Execute(txn, SQLTxnSuccess_LoadClientResetCountForMap, SQLTxnFailure_LogError, userid, DBPrio_Normal);
+	}
+	else if (resetType == ResetType_ResetCount)
+	{
+		gH_DB.Execute(txn, SQLTxnSuccess_LoadClientCompletionCountForMap, SQLTxnFailure_LogError, userid, DBPrio_Normal);
+	}
+	else
+	{
+		gH_DB.Execute(txn, SQLTxnSuccess_LoadClientProCompletionCountForMap, SQLTxnFailure_LogError, userid, DBPrio_Normal);
+	}
+}
+
 void LoadClientAirStats(int userid, int steamid)
 {
 	char query[256];
@@ -162,12 +192,14 @@ void SaveClientResetStats(int client)
 	char query[2048];
 	char buffer[128];
 	Transaction txn = new Transaction();
-
-	FormatEx(query, sizeof(query), "DELETE FROM ResetStats WHERE SteamID32 = %d", steamid);
-	txn.AddQuery(query);
-
+	
 	char map[32];
 	GetCurrentMapDisplayName(map, sizeof(map));
+	bool emptyQuery = true;
+
+	FormatEx(query, sizeof(query), "DELETE FROM ResetStats WHERE SteamID32 = %d AND Map = '%s'", steamid, map);
+	txn.AddQuery(query);
+
 	FormatEx(query, sizeof(query), "INSERT INTO ResetStats (SteamID32, Map, Course, Mode, ResetType, ResetCount) VALUES ");
 
 	for (int course = 0; course < GOKZ_MAX_COURSES - 1; course++)
@@ -176,16 +208,19 @@ void SaveClientResetStats(int client)
 		{
 			if (gI_ResetCount[client][course][mode][Scope_AllTime] > 0)
 			{
+				emptyQuery = false;
 				FormatEx(buffer, sizeof(buffer), "(%d,'%s',%d,%d,%d,%d),", steamid, map, course, mode, ResetType_ResetCount, gI_ResetCount[client][course][mode][Scope_AllTime]);
 				StrCat(query, sizeof(query), buffer);
 			}
 			if (gI_CompletionCount[client][course][mode][Scope_AllTime] > 0)
 			{
+				emptyQuery = false;
 				FormatEx(buffer, sizeof(buffer), "(%d,'%s',%d,%d,%d,%d),", steamid, map, course, mode, ResetType_CompletionCount, gI_CompletionCount[client][course][mode][Scope_AllTime]);
 				StrCat(query, sizeof(query), buffer);
 			}
 			if (gI_ProCompletionCount[client][course][mode][Scope_AllTime] > 0)
 			{
+				emptyQuery = false;
 				FormatEx(buffer, sizeof(buffer), "(%d,'%s',%d,%d,%d,%d),", steamid, map, course, mode, ResetType_ProCompletionCount, gI_ProCompletionCount[client][course][mode][Scope_AllTime]);
 				StrCat(query, sizeof(query), buffer);
 			}
@@ -193,8 +228,10 @@ void SaveClientResetStats(int client)
 	}
 	query[strlen(query) - 1] = 0;
 	txn.AddQuery(query);
-
-	gH_DB.Execute(txn, _, SQLTxnFailure_LogError, _, DBPrio_Normal);
+	if (!emptyQuery)
+	{
+		gH_DB.Execute(txn, _, SQLTxnFailure_LogError, _, DBPrio_Normal);
+	}
 }
 
 void SaveClientAirStats(int client)
@@ -273,6 +310,116 @@ void SQLTxnSuccess_LoadClientResetStats(Database db, int userid, int numQueries,
 	}
 
 	gB_BhopStatsLoaded[client] = true;
+}
+
+void SQLTxnSuccess_LoadClientResetCountForMap(Database db, int userid, int numQueries, DBResultSet[] results, any[] queryData)
+{
+	int client = GetClientOfUserId(userid);
+	if (client == 0)
+	{
+		return;
+	}
+	bool success = false;
+	int resetCount;
+	char map[128];
+	while (results[0].FetchRow())
+	{
+		success = true;
+		int count = results[0].FetchInt(0);
+		int resetType = results[0].FetchInt(1);
+		
+		results[0].FetchString(2, map, sizeof(map));
+		switch (resetType) {
+			case ResetType_ResetCount:
+			{
+				resetCount = count;
+			}
+		}
+	}
+	if (success)
+	{
+		GOKZ_PrintToChat(client, true, "Reset count for {blue}%s{grey} : {lime}%i", map, resetCount);
+	}
+	else
+	{
+		GOKZ_PrintToChat(client, true, "Failed to retrieve reset statistics.");
+	}
+}
+
+void SQLTxnSuccess_LoadClientCompletionCountForMap(Database db, int userid, int numQueries, DBResultSet[] results, any[] queryData)
+{
+	int client = GetClientOfUserId(userid);
+	if (client == 0)
+	{
+		return;
+	}
+	bool success = false;
+	int resetCount, completionCount;
+	char map[128];
+	while (results[0].FetchRow())
+	{
+		success = true;
+		int count = results[0].FetchInt(0);
+		int resetType = results[0].FetchInt(1);
+		results[0].FetchString(2, map, sizeof(map));
+		switch (resetType) {
+			case ResetType_ResetCount:
+			{
+				resetCount = count;
+			}
+			case ResetType_CompletionCount:
+			{
+				completionCount = count;
+			}
+		}
+	}
+	if (success)
+	{	
+		float percent = resetCount == 0 ? 0.0 : float(completionCount) / resetCount * 100;
+		GOKZ_PrintToChat(client, true, "Completion count for {blue}%s{grey}: {lime}%i {grey}/ {lime}%i {grey}| {lime}%.2f{grey}%%", map, completionCount, resetCount, percent);
+	}
+	else
+	{
+		GOKZ_PrintToChat(client, true, "Failed to retrieve reset statistics.");
+	}
+}
+
+void SQLTxnSuccess_LoadClientProCompletionCountForMap(Database db, int userid, int numQueries, DBResultSet[] results, any[] queryData)
+{
+	int client = GetClientOfUserId(userid);
+	if (client == 0)
+	{
+		return;
+	}
+	bool success = false;
+	int resetCount, proCompletionCount;
+	char map[128];
+	while (results[0].FetchRow())
+	{
+		success = true;
+		int count = results[0].FetchInt(0);
+		int resetType = results[0].FetchInt(1);
+		results[0].FetchString(2, map, sizeof(map));
+		switch (resetType) {
+			case ResetType_ResetCount:
+			{
+				resetCount = count;
+			}
+			case ResetType_ProCompletionCount:
+			{
+				proCompletionCount = count;
+			}
+		}
+	}
+	if (success)
+	{	
+		float percent = resetCount == 0 ? 0.0 : float(proCompletionCount) / resetCount * 100;
+		GOKZ_PrintToChat(client, true, "Pro completion count for {blue}%s{grey}: {lime}%i {grey}/ {lime}%i {grey}| {lime}%.2f{grey}%%", map, proCompletionCount, resetCount, percent);
+	}
+	else
+	{
+		GOKZ_PrintToChat(client, true, "Failed to retrieve reset statistics.");
+	}
 }
 
 void SQLTxnSuccess_LoadClientBhopStats(Database db, int userid, int numQueries, DBResultSet[] results, any[] queryData)
