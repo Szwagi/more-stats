@@ -2,6 +2,8 @@
 
 void RegisterCommands()
 {
+	RegConsoleCmd("sm_morestats", CommandMoreStats);
+	
 	RegConsoleCmd("sm_bhopstats", CommandBhopStats);
 	RegConsoleCmd("sm_perfstats", CommandBhopStats);
 	RegConsoleCmd("sm_perfstreaks", CommandPerfStreaks);
@@ -98,7 +100,39 @@ Action CommandSegmentPause(int client, int argc)
 	return Plugin_Handled;
 }
 
+Action CommandMoreStats(int client, int argc)
+{
+	PrintCheckConsole(client);
+	PrintToConsole(client, "More Stats commands:");
+	PrintToConsole(client, "Scope <s>: all (alltime / overall) / session / run (all by default) / segment (not available for ResetStats) / jump (exclusive to AirStats)");
+	PrintToConsole(client, "Mode <m>: kzt / skz / vnl (current mode by default)");
+	PrintToConsole(client, "Course <c>: 0 (main course), 1-100 (bonuses) (current course by default)");
+	
+	PrintToConsole(client, "========================== General ===========================");
+	PrintToConsole(client, "!postrunstats - Show all statistics at the end of a run");
+	PrintToConsole(client, "!pausesegment / !unpausesegment / !resumesegment / !togglesegment - Toggle recording of the segment");
+	PrintToConsole(client, "!resetsegment - Reset all statistics of the segment");
+	
+	PrintToConsole(client, "========================= BhopStats ==========================");
+	PrintToConsole(client, "!bhopstats / !perfstats <s> <m> - Display bhop stats");	
+	PrintToConsole(client, "!perfstreaks <s> <m> - Display perf streaks");
+	PrintToConsole(client, "!scrollstats <s> <m> - Display scroll statistics");
+	PrintToConsole(client, "!airstats <s> <m> - Display airstrafe stats");
+	PrintToConsole(client, "!chatbhopstats <t> <m> - Display bhop statistics in chat");
+	PrintToConsole(client, "!chatscrollstats - Display real time scroll stats in chat");
+	
+	PrintToConsole(client, "========================= ResetStats =========================");	
+	PrintToConsole(client, "!resetcount / !rcount <s/map> <c> <m> - Display reset count in chat");
+	PrintToConsole(client, "!completioncount / !ccount <s/map> <c> <m> - Display reset and completion count in chat");
+	PrintToConsole(client, "!procompletioncount / !pccount <s/map> <c> <m> - Display reset and pro completion count in chat");	
+
+	PrintToConsole(client, "========================= AirStats =========================");
+	PrintToConsole(client, "!airstats <s> <m> - Display airstrafe statistics");
+	PrintToConsole(client, "!chatairstats - Display real time airstrafe statistics in chat");
+}
+
 // ===== [ BhopStats ] =====
+
 Action CommandBhopStats(int client, int argc)
 {
 	if (!gB_BhopStatsLoaded[client])
@@ -563,6 +597,7 @@ Action CommandProCompletionCount(int client, int argc)
 }
 
 // ===== [ AirStats ] =====
+
 Action CommandAirStats(int client, int argc)
 {
 	int mode = GOKZ_GetCoreOption(client, Option_Mode);

@@ -302,7 +302,8 @@ void Movement_OnPlayerJump_BhopStats(int client, int jumpbug)
 		EndPerfStreak(client);
 		return;
 	}
-	RequestFrame(CheckPerf, client);
+	int userid = GetClientUserId(client);
+	RequestFrame(CheckPerf, userid);
 
 	int landingTick = Movement_GetLandingTick(client);
 	int groundTicks = gI_TickCount[client] - landingTick - 1;
@@ -334,9 +335,10 @@ void Movement_OnPlayerJump_BhopStats(int client, int jumpbug)
 	}
 }
 
-public void CheckPerf(int client)
+public void CheckPerf(int userid)
 {
-	if (GOKZ_GetHitPerf(client) && !gCV_sv_autobunnyhopping.BoolValue)
+	int client = GetClientOfUserId(userid);
+	if (client != 0 && GOKZ_GetHitPerf(client) && !gCV_sv_autobunnyhopping.BoolValue)
 	{
 		IncrementVariable(client, gI_GOKZPerfCount[client][GOKZ_GetCoreOption(client, Option_Mode)]);
 	}
