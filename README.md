@@ -5,41 +5,47 @@
 Plugin to display statistics about various KZ actions. Read [this](https://github.com/Szwagi/more-stats/blob/main/README.md) if you are looking to migrate from Szwagi's plugins.
 
 ### Commands
-- `!bhopstats` / `!perfstats <scope> <mode>` - Display bhop statistics
 
-- `!perfstreaks <scope> <mode>` - Display perf streaks
+#### Arguments
+- Scope (s): `all` (`alltime` / `overall`) / `session` / `run` / `segment` (not available for ResetStats) / `jump` (exclusive to AirStats). Commands will show alltime statistics by default.
+- Mode (m): `kzt` / `skz` / `vnl`. Commands will use the current mode by default.
+- Course (c): 0 (main course), 1-100 (bonuses). Commands will use the current course by default.
+- For ResetStats, map name can be used instead of scope to show reset statistics for the requested map instead.
+#### General
+- `!morestats` - Display command list in console
 
-- `!scrollstats <scope> <mode>` - Display scroll statistics
-
-- `!airstats <scope> <mode>` - Display airstrafe statistics
-
-- `!resetcount` / `!rcount <scope/map> <course> <mode>` - Display reset count
-
-- `!completioncount` / `!ccount <scope/map> <course> <mode>` - Display reset and completion count
-
-- `!procompletioncount` / `!pccount <scope/map> <course> <mode>` - Display reset and pro completion count
-
-#
-
-- `!chatbhopstats <scope> <mode>` - Display bhop statistics in chat, similar to GOKZ's `!bhopcheck`
-
-- `!chatscrollstats` - Display scroll statistics in chat as they happen 
-
-- `!chatairstats` - Display airstrafe statistics in chat as they happen
-
-#
-- `!pausesegment` / `!unpausesegment` / `!resumesegment` / `!togglesegment` - Toggle bhop recording of the segment
+- `!pausesegment` / `!unpausesegment` / `!resumesegment` / `!togglesegment` - Toggle recording of the segment
 
 - `!resetsegment` - Reset all statistics of the segment
 
-- `!postrunstats` - Display all statistics at the end of the run (GOKZ)
-#
+- `!postrunstats` - Display all run statistics at the end of the run
 
-- Possible scopes: ``all/alltime/overall`` (default) / ``session`` / ``run`` (not available for reset stats) / ``segment``. For reset statistics, you can search for map using the first argument.
+#### BhopStats
 
-- Possible modes: ``kzt`` / ``skz`` / ``vnl``. Default is player's current mode.
+- `!bhopstats` / `!perfstats` `<s> <m>` - Display bhop statistics
 
-- Possible courses: From 0 to 100. 0 is main course, 1 to 100 is bonuses. Default is player's current course.
+- `!perfstreaks <s> <m>` - Display perf streaks
+
+- `!scrollstats <s> <m>` - Display scroll statistics
+
+- `!chatscrollstats` - Display realtime scroll statistics in chat
+
+- `!chatbhopstats <s> <m>` - Display bhop statistics in chat, similar to GOKZ's `!bhopcheck`
+
+#### ResetStats
+
+- `!resetcount` / `!rcount <s/map> <c> <m>` - Display reset count
+
+- `!completioncount` / `!ccount <s/map> <c> <m>` - Display reset and completion count
+
+- `!procompletioncount` / `!pccount <s/map> <c> <m>` - Display reset and pro completion count
+
+#### AirStats
+
+- `!chatairstats` - Display realtime airstrafe statistics in chat
+
+- `!airstats <s> <m>` - Display airstrafe statistics
+
 
 ### Dependencies
 - [MovementAPI](https://github.com/danzayau/MovementAPI)
