@@ -46,6 +46,9 @@ Plugin to display statistics about various KZ actions. Read [this](https://githu
 
 - `!airstats <s> <m>` - Display airstrafe statistics
 
+### Admin Commands
+
+- `!morestatsdelete <UID> <all/bhop/reset/air>.` - Delete statistics of selected player. UID is the number found in player's SteamID3: `[U:1:XXXXXXXXX]`
 
 ### Dependencies
 - [MovementAPI](https://github.com/danzayau/MovementAPI)

@@ -30,6 +30,8 @@ void RegisterCommands()
 	
 	RegConsoleCmd("sm_chatairstats", CommandChatAirStats);
 	RegConsoleCmd("sm_airstats", CommandAirStats);
+
+	RegAdminCmd("sm_morestatsdelete", CommandMoreStatsDelete, ADMFLAG_ROOT);
 }
 
 Action CommandPostRunStats(int client, int argc)
@@ -129,6 +131,11 @@ Action CommandMoreStats(int client, int argc)
 	PrintToConsole(client, "========================= AirStats =========================");
 	PrintToConsole(client, "!airstats <s> <m> - Display airstrafe statistics");
 	PrintToConsole(client, "!chatairstats - Display real time airstrafe statistics in chat");
+	if (GetAdminFlag(GetUserAdmin(client), Admin_Root))
+	{
+		PrintToConsole(client, "======================= Admin Commands =======================");
+		PrintToConsole(client, "!morestatsdelete <UID> <all/bhop/reset/air>. UID is the number found in player SteamID3: [U:1:XXXXXXXXX]");
+	}
 }
 
 // ===== [ BhopStats ] =====
@@ -358,6 +365,7 @@ Action CommandChatScrollStats(int client, int argc)
 }
 
 // ===== [ ResetStats ] =====
+
 Action CommandResetCount(int client, int argc)
 {
 	int course = GOKZ_GetCourse(client);
@@ -664,6 +672,32 @@ Action CommandChatAirStats(int client, int argc)
 	else
 	{
 		GOKZ_PrintToChat(client, true, "{grey}Chat air stats disabled.");
+	}
+	return Plugin_Handled;
+}
+
+// ===== [ Admin Commands ] =====
+
+Action CommandMoreStatsDelete(int client, int argc)
+{
+	if (argc < 2)
+	{
+		GOKZ_PrintToChat(client, true, "Usage: !morestatsdelete <UID> <all/bhop/reset/air>. UID is the number found in player SteamID3: [U:1:XXXXXXXXX]");
+	}
+	else
+	{
+		char steamID[32];
+		GetCmdArg(1, steamID, sizeof(steamID));
+		int uid = StringToInt(steamID);
+		char stats[8];
+		GetCmdArg(2, stats, sizeof(stats));
+		if (!StrEqual(stats, "all", false) && !StrEqual(stats, "bhop", false) && !StrEqual(stats, "reset", false) && !StrEqual(stats, "air", false))
+		{
+			PrintToChat(client, "Usage: !morestatsdelete <UID> <all/bhop/reset/air>. UID is the number found in player SteamID3: [U:1:XXXXXXXXX]");
+			return Plugin_Handled;
+		}
+		DeleteStats(uid, stats);
+		GOKZ_PrintToChat(client, true, "Deleting %s statistics for {default}U:1:%i{grey}.", stats, uid);
 	}
 	return Plugin_Handled;
 }

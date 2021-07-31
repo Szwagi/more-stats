@@ -6,10 +6,10 @@
 
 #include "more-stats/globals.sp"
 #include "more-stats/helpers.sp"
-#include "more-stats/databases.sp"
 #include "more-stats/bhopstats.sp"
 #include "more-stats/resetstats.sp"
 #include "more-stats/airstats.sp"
+#include "more-stats/databases.sp"
 #include "more-stats/commands.sp"
 #include "more-stats/natives.sp"
 
@@ -22,7 +22,7 @@ public Plugin myinfo =
 	name = "More Stats",
 	author = "Szwagi, zer0.k",
 	description = "Tracks various KZ related statistics",
-	version = "v2.2.0",
+	version = "v2.3.0",
 	url = "https://github.com/zer0k-z/more-stats"
 };
 

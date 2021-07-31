@@ -273,6 +273,71 @@ void SaveClientAirStats(int client)
 
 	gH_DB.Execute(txn, _, SQLTxnFailure_LogError, _, DBPrio_Normal);
 }
+
+void DeleteStats(int uid, char[] stats)
+{
+	int client = 0;
+	for (int i = 1; i < MAXPLAYERS + 1; i++)
+	{
+		if (IsClientInGame(i) && !IsFakeClient(i) && GetSteamAccountID(i) == uid)
+		{
+			client = i;
+			break;
+		}
+	}
+	Transaction txn = new Transaction();
+	char query[1024];
+	if (StrEqual(stats, "all", false))
+	{
+		FormatEx(query, sizeof(query), "DELETE FROM BhopStats WHERE SteamID32 = %d", uid);
+		txn.AddQuery(query);
+		FormatEx(query, sizeof(query), "DELETE FROM ResetStats WHERE SteamID32 = %d", uid);
+		txn.AddQuery(query);
+		FormatEx(query, sizeof(query), "DELETE FROM AirStats WHERE SteamID32 = %d", uid);
+		txn.AddQuery(query);
+		if (client)
+		{
+			InitializeBhopStats(client);
+			InitializeResetStats(client);
+			InitializeAirStats(client);
+			gB_BhopStatsLoaded[client] = true;
+			gB_ResetStatsLoaded[client] = true;
+			gB_AirStatsLoaded[client] = true;
+		}
+	}
+	else if (StrEqual(stats, "bhop", false))
+	{
+		if (client)
+		{
+			InitializeBhopStats(client);
+			gB_BhopStatsLoaded[client] = true;
+		}
+		FormatEx(query, sizeof(query), "DELETE FROM BhopStats WHERE SteamID32 = %d", uid);
+		txn.AddQuery(query);
+	}
+	else if (StrEqual(stats, "reset", false))
+	{
+		if (client)
+		{
+			InitializeResetStats(client);
+			gB_ResetStatsLoaded[client] = true;
+		}
+		FormatEx(query, sizeof(query), "DELETE FROM ResetStats WHERE SteamID32 = %d", uid);
+		txn.AddQuery(query);
+	}
+	else if (StrEqual(stats, "air", false))
+	{
+		if (client)
+		{
+			InitializeAirStats(client);
+			gB_AirStatsLoaded[client] = true;
+		}
+		FormatEx(query, sizeof(query), "DELETE FROM AirStats WHERE SteamID32 = %d", uid);
+		txn.AddQuery(query);
+	}
+	gH_DB.Execute(txn, _, SQLTxnFailure_LogError, _, DBPrio_Normal);
+}
+
 void SQLTxnFailure_LogError(Database db, any unused, int numQueries, const char[] error, int failIndex, any[] queryData)
 {
 	LogError("[MoreStats] %s", error);
@@ -485,7 +550,6 @@ void SQLTxnSuccess_LoadClientBhopStats(Database db, int userid, int numQueries, 
 
 	gB_BhopStatsLoaded[client] = true;
 }
-
 
 void SQLTxnSuccess_LoadClientAirStats(Database db, int userid, int numQueries, DBResultSet[] results, any[] queryData)
 {
