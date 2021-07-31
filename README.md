@@ -7,7 +7,7 @@ Plugin to display statistics about various KZ actions. Read [this](https://githu
 ### Commands
 
 #### Arguments
-- Scope (s): `all` (`alltime` / `overall`) / `session` / `run` / `segment` (not available for ResetStats) / `jump` (exclusive to AirStats). Commands will show alltime statistics by default.
+- Scope (s): `all` (`alltime` / `overall`) / `session` / `run` (not available for ResetStats) / `segment` / `jump` (exclusive to AirStats). Commands will show alltime statistics by default.
 - Mode (m): `kzt` / `skz` / `vnl`. Commands will use the current mode by default.
 - Course (c): 0 (main course), 1-100 (bonuses). Commands will use the current course by default.
 - For ResetStats, map name can be used instead of scope to show reset statistics for the requested map instead.
