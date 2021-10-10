@@ -48,10 +48,6 @@ jobs:
           rm -rf $PLUGINS_PATH
           mkdir -p $PLUGINS_PATH
           rsync -av --include='*/' --include="*.smx" --exclude="*" --prune-empty-dirs --remove-source-files $SCRIPTS_PATH/ $PLUGINS_PATH/
-          
-      - name: Debug
-        run: ls
-        working-directory: ${{ env.SOURCEMOD_PATH }}   
 
       - name: Updater
         if: startsWith(github.ref, 'refs/tags/')
