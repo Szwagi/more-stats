@@ -53,9 +53,10 @@ Plugin to display statistics about various KZ actions. Read [this](https://githu
 ### Dependencies
 - [MovementAPI](https://github.com/danzayau/MovementAPI)
 - [GOKZ](https://bitbucket.org/kztimerglobalteam/gokz/)
+- [Updater](https://forums.alliedmods.net/showthread.php?t=169095) (Optional)
 
 ### Notes
-- Requires `more-stats` in databases config
+- Requires `more-stats` in databases config.
 - Not every perf would result in a speed gain. More precisely (KZT/VNL example):
 
 | # ticks on ground       | 0 (considered as 1 tick in more-stats)       | 1                                        | 2+                                         |

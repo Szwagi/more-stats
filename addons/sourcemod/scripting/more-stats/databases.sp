@@ -60,7 +60,7 @@ void LoadClientBhopStats(int userid, int steamid)
 	char query[256];
 	Transaction txn = new Transaction();
 
-	FormatEx(query, sizeof(query), 
+	FormatEx(query, sizeof(query),
 		"SELECT Mode, StatType1, StatType2, StatCount " ...
 		"FROM BhopStats " ...
 		"WHERE SteamID32 = %d", steamid);
@@ -121,7 +121,7 @@ void LoadClientAirStats(int userid, int steamid)
 	char query[256];
 	Transaction txn = new Transaction();
 
-	FormatEx(query, sizeof(query), 
+	FormatEx(query, sizeof(query),
 		"SELECT Mode, AirType, Count " ...
 		"FROM AirStats " ...
 		"WHERE SteamID32 = %d", steamid);
@@ -137,7 +137,7 @@ void SaveClientBhopStats(int client)
 	{
 		return;
 	}
-
+	bool emptyQuery = true;
 	char query[8192];
 	char buffer[128];
 	Transaction txn = new Transaction();
@@ -150,35 +150,70 @@ void SaveClientBhopStats(int client)
 	{
 		for (int i = 0; i < MAX_BHOP_TICKS; i++)
 		{
-			FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d,%d),", steamid, mode, StatType_BhopStats, i, gI_BhopTicks[client][mode][i][Scope_AllTime]);
-			StrCat(query, sizeof(query), buffer);
+			if (gI_BhopTicks[client][mode][i][Scope_AllTime] > 0)
+			{
+				emptyQuery = false;
+				FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d,%d),", steamid, mode, StatType_BhopStats, i, gI_BhopTicks[client][mode][i][Scope_AllTime]);
+				StrCat(query, sizeof(query), buffer);
+			}
 		}
 
 		for (int i = 0; i < MAX_PERF_STREAK; i++)
 		{
-			FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d,%d),", steamid, mode, StatType_PerfStreaks, i, gI_PerfStreaks[client][mode][i][Scope_AllTime]);
+			if (gI_PerfStreaks[client][mode][i][Scope_AllTime] > 0)
+			{
+				emptyQuery = false;
+				FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d,%d),", steamid, mode, StatType_PerfStreaks, i, gI_PerfStreaks[client][mode][i][Scope_AllTime]);
+				StrCat(query, sizeof(query), buffer);
+			}
+		}
+		if (gI_SumRegisteredScrolls[client][mode][Scope_AllTime] > 0)
+		{
+			emptyQuery = false;
+			FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d,%d),", steamid, mode, StatType_ScrollEff, ScrollEff_RegisteredScrolls, gI_SumRegisteredScrolls[client][mode][Scope_AllTime]);
 			StrCat(query, sizeof(query), buffer);
 		}
-
-		FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d,%d),", steamid, mode, StatType_ScrollEff, ScrollEff_RegisteredScrolls, gI_SumRegisteredScrolls[client][mode][Scope_AllTime]);
-		StrCat(query, sizeof(query), buffer);
-		FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d,%d),", steamid, mode, StatType_ScrollEff, ScrollEff_FastScrolls, gI_SumFastScrolls[client][mode][Scope_AllTime]);
-		StrCat(query, sizeof(query), buffer);
-		FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d,%d),", steamid, mode, StatType_ScrollEff, ScrollEff_SlowScrolls, gI_SumSlowScrolls[client][mode][Scope_AllTime]);
-		StrCat(query, sizeof(query), buffer);
-		FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d,%d),", steamid, mode, StatType_ScrollEff, ScrollEff_TimingTotal, gI_TimingTotal[client][mode][Scope_AllTime]);
-		StrCat(query, sizeof(query), buffer);
-		FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d,%d),", steamid, mode, StatType_ScrollEff, ScrollEff_TimingSamples, gI_TimingSamples[client][mode][Scope_AllTime]);
-		StrCat(query, sizeof(query), buffer);		
-		FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d,%d),", steamid, mode, StatType_GOKZPerfCount, 0, gI_GOKZPerfCount[client][mode][Scope_AllTime]);
-		StrCat(query, sizeof(query), buffer);
-
+		if (gI_SumFastScrolls[client][mode][Scope_AllTime] > 0)
+		{
+			emptyQuery = false;
+			FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d,%d),", steamid, mode, StatType_ScrollEff, ScrollEff_FastScrolls, gI_SumFastScrolls[client][mode][Scope_AllTime]);
+			StrCat(query, sizeof(query), buffer);
+		}
+		if (gI_SumSlowScrolls[client][mode][Scope_AllTime] > 0)
+		{
+			emptyQuery = false;
+			FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d,%d),", steamid, mode, StatType_ScrollEff, ScrollEff_SlowScrolls, gI_SumSlowScrolls[client][mode][Scope_AllTime]);
+			StrCat(query, sizeof(query), buffer);
+		}
+		if (gI_TimingTotal[client][mode][Scope_AllTime])
+		{
+			emptyQuery = false;
+			FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d,%d),", steamid, mode, StatType_ScrollEff, ScrollEff_TimingTotal, gI_TimingTotal[client][mode][Scope_AllTime]);
+			StrCat(query, sizeof(query), buffer);
+		}
+		if (gI_TimingSamples[client][mode][Scope_AllTime] > 0)
+		{
+			emptyQuery = false;
+			FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d,%d),", steamid, mode, StatType_ScrollEff, ScrollEff_TimingSamples, gI_TimingSamples[client][mode][Scope_AllTime]);
+			StrCat(query, sizeof(query), buffer);
+		}
+		if (gI_GOKZPerfCount[client][mode][Scope_AllTime] > 0)
+		{
+			emptyQuery = false;
+			FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d,%d),", steamid, mode, StatType_GOKZPerfCount, 0, gI_GOKZPerfCount[client][mode][Scope_AllTime]);
+			StrCat(query, sizeof(query), buffer);
+		}
 	}
-
-	query[strlen(query) - 1] = 0; // Remove last comma...
-	txn.AddQuery(query);
-
-	gH_DB.Execute(txn, _, SQLTxnFailure_LogError, _, DBPrio_Normal);
+	if (!emptyQuery)
+	{
+		query[strlen(query) - 1] = 0; // Remove last comma...
+		txn.AddQuery(query);
+		gH_DB.Execute(txn, _, SQLTxnFailure_LogError, _, DBPrio_Normal);
+	}
+	else
+	{
+		delete txn;
+	}
 }
 
 void SaveClientResetStats(int client)
@@ -192,7 +227,7 @@ void SaveClientResetStats(int client)
 	char query[2048];
 	char buffer[128];
 	Transaction txn = new Transaction();
-	
+
 	char map[32];
 	GetCurrentMapDisplayName(map, sizeof(map));
 	bool emptyQuery = true;
@@ -226,11 +261,15 @@ void SaveClientResetStats(int client)
 			}
 		}
 	}
-	query[strlen(query) - 1] = 0;
-	txn.AddQuery(query);
 	if (!emptyQuery)
 	{
+		query[strlen(query) - 1] = 0;
+		txn.AddQuery(query);
 		gH_DB.Execute(txn, _, SQLTxnFailure_LogError, _, DBPrio_Normal);
+	}
+	else
+	{
+		delete txn;
 	}
 }
 
@@ -245,6 +284,7 @@ void SaveClientAirStats(int client)
 	char query[8192];
 	char buffer[128];
 	Transaction txn = new Transaction();
+	bool emptyQuery = true;
 
 	FormatEx(query, sizeof(query), "DELETE FROM AirStats WHERE SteamID32 = %d", steamid);
 	txn.AddQuery(query);
@@ -252,26 +292,60 @@ void SaveClientAirStats(int client)
 	FormatEx(query, sizeof(query), "INSERT INTO AirStats (SteamID32, Mode, AirType, Count) VALUES ");
 	for (int mode = 0; mode < MODE_COUNT; mode++)
 	{
-		FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d),", steamid, mode, AirType_AirTime, gI_AirTime[client][mode][Scope_AllTime]);
-		StrCat(query, sizeof(query), buffer);
-		FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d),", steamid, mode, AirType_Strafes, gI_Strafes[client][mode][Scope_AllTime]);
-		StrCat(query, sizeof(query), buffer);
-		FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d),", steamid, mode, AirType_OverLap, gI_Overlap[client][mode][Scope_AllTime]);
-		StrCat(query, sizeof(query), buffer);
-		FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d),", steamid, mode, AirType_DeadAir, gI_DeadAir[client][mode][Scope_AllTime]);
-		StrCat(query, sizeof(query), buffer);
-		FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d),", steamid, mode, AirType_BadAngles, gI_BadAngles[client][mode][Scope_AllTime]);
-		StrCat(query, sizeof(query), buffer);
-		FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d),", steamid, mode, AirType_AirAccelTime, gI_AirAccelTime[client][mode][Scope_AllTime]);
-		StrCat(query, sizeof(query), buffer);
-		FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d),", steamid, mode, AirType_AirVelChangeTime, gI_AirVelChangeTime[client][mode][Scope_AllTime]);
-		StrCat(query, sizeof(query), buffer);
+		if (gI_AirTime[client][mode][Scope_AllTime] > 0)
+		{
+			emptyQuery = false;
+			FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d),", steamid, mode, AirType_AirTime, gI_AirTime[client][mode][Scope_AllTime]);
+			StrCat(query, sizeof(query), buffer);
+		}
+		if (gI_Strafes[client][mode][Scope_AllTime] > 0)
+		{
+			emptyQuery = false;
+			FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d),", steamid, mode, AirType_Strafes, gI_Strafes[client][mode][Scope_AllTime]);
+			StrCat(query, sizeof(query), buffer);
+		}
+		if (gI_Overlap[client][mode][Scope_AllTime] > 0)
+		{
+			emptyQuery = false;
+			FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d),", steamid, mode, AirType_OverLap, gI_Overlap[client][mode][Scope_AllTime]);
+			StrCat(query, sizeof(query), buffer);
+		}
+		if (gI_DeadAir[client][mode][Scope_AllTime] > 0)
+		{
+			emptyQuery = false;
+			FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d),", steamid, mode, AirType_DeadAir, gI_DeadAir[client][mode][Scope_AllTime]);
+			StrCat(query, sizeof(query), buffer);
+		}
+		if (gI_BadAngles[client][mode][Scope_AllTime] > 0)
+		{
+			emptyQuery = false;
+			FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d),", steamid, mode, AirType_BadAngles, gI_BadAngles[client][mode][Scope_AllTime]);
+			StrCat(query, sizeof(query), buffer);
+		}
+		if (gI_AirAccelTime[client][mode][Scope_AllTime] > 0)
+		{
+			emptyQuery = false;
+			FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d),", steamid, mode, AirType_AirAccelTime, gI_AirAccelTime[client][mode][Scope_AllTime]);
+			StrCat(query, sizeof(query), buffer);
+		}
+		if (gI_AirVelChangeTime[client][mode][Scope_AllTime] > 0)
+		{
+			emptyQuery = false;
+			FormatEx(buffer, sizeof(buffer), "(%d,%d,%d,%d),", steamid, mode, AirType_AirVelChangeTime, gI_AirVelChangeTime[client][mode][Scope_AllTime]);
+			StrCat(query, sizeof(query), buffer);
+		}
 	}
 
-	query[strlen(query) - 1] = 0; // Remove last comma...
-	txn.AddQuery(query);
-
-	gH_DB.Execute(txn, _, SQLTxnFailure_LogError, _, DBPrio_Normal);
+	if (!emptyQuery)
+	{
+		query[strlen(query) - 1] = 0; // Remove last comma...
+		txn.AddQuery(query);
+		gH_DB.Execute(txn, _, SQLTxnFailure_LogError, _, DBPrio_Normal);
+	}
+	else
+	{
+		delete txn;
+	}
 }
 
 void DeleteStats(int uid, char[] stats)
@@ -371,7 +445,7 @@ void SQLTxnSuccess_LoadClientResetStats(Database db, int userid, int numQueries,
 			{
 				gI_ProCompletionCount[client][course][mode][Scope_AllTime] = count;
 			}
-		}		
+		}
 	}
 
 	gB_BhopStatsLoaded[client] = true;
@@ -392,7 +466,7 @@ void SQLTxnSuccess_LoadClientResetCountForMap(Database db, int userid, int numQu
 		success = true;
 		int count = results[0].FetchInt(0);
 		int resetType = results[0].FetchInt(1);
-		
+
 		results[0].FetchString(2, map, sizeof(map));
 		switch (resetType) {
 			case ResetType_ResetCount:
@@ -439,7 +513,7 @@ void SQLTxnSuccess_LoadClientCompletionCountForMap(Database db, int userid, int 
 		}
 	}
 	if (success)
-	{	
+	{
 		float percent = resetCount == 0 ? 0.0 : float(completionCount) / resetCount * 100;
 		GOKZ_PrintToChat(client, true, "Completion count for {blue}%s{grey}: {lime}%i {grey}/ {lime}%i {grey}| {lime}%.2f{grey}%%", map, completionCount, resetCount, percent);
 	}
@@ -477,7 +551,7 @@ void SQLTxnSuccess_LoadClientProCompletionCountForMap(Database db, int userid, i
 		}
 	}
 	if (success)
-	{	
+	{
 		float percent = resetCount == 0 ? 0.0 : float(proCompletionCount) / resetCount * 100;
 		GOKZ_PrintToChat(client, true, "Pro completion count for {blue}%s{grey}: {lime}%i {grey}/ {lime}%i {grey}| {lime}%.2f{grey}%%", map, proCompletionCount, resetCount, percent);
 	}
@@ -594,7 +668,7 @@ void SQLTxnSuccess_LoadClientAirStats(Database db, int userid, int numQueries, D
 			{
 				gI_AirVelChangeTime[client][mode][Scope_AllTime] = count;
 			}
-		}		
+		}
 	}
 
 	gB_AirStatsLoaded[client] = true;
