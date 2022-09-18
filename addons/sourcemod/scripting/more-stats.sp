@@ -160,14 +160,15 @@ public void GOKZ_OnOptionChanged(int client, const char[] option, any newValue)
 	GOKZ_OnOptionChanged_BhopStats(client, option);
 }
 
-public void Movement_OnPlayerJump(int client, bool jumpbug)
+public Action Movement_OnJumpPost(int client)
 {
 	if (!gB_BhopStatsLoaded[client] || IsFakeClient(client))
 	{
-		return;
+		return Plugin_Continue;
 	}
 
-	Movement_OnPlayerJump_BhopStats(client, jumpbug);
+	Movement_OnJumpPost_BhopStats(client);
+	return Plugin_Continue;
 }
 
 public Action GOKZ_OnTimerStart(int client, int course)
